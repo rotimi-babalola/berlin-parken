@@ -86,6 +86,9 @@
   outline: 0;
   box-shadow: 0 0 0 3px rgb(49 93 73 / 10%);
 }
+.addressInput[aria-invalid="true"] {
+  border-color: #a43c31;
+}
 .addressInput::-webkit-search-cancel-button {
   cursor: pointer;
 }
@@ -165,6 +168,18 @@
 }
 .errorStatus {
   color: #a43c31;
+}
+.retry {
+  margin-top: 5px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--green-dark);
+  font: inherit;
+  font-size: 11px;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  cursor: pointer;
 }
 .radiusField {
   min-width: 0;

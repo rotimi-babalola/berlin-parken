@@ -4,9 +4,9 @@ import { useEffect, useId, useRef, useState } from "react";
 import type { KeyboardEvent, FormEvent } from "react";
 import type { AddressSuggestion } from "@/lib/geocoder/types";
 import styles from "./address-search.module.css";
+import { useAddressSuggestions } from "./use-address-suggestions";
 
 type SearchReady = { destination: AddressSuggestion; radiusMeters: number };
-type SuggestionState = "idle" | "loading" | "ready" | "empty" | "error";
 
 export function AddressSearch() {
   const inputId = useId();
@@ -14,76 +14,51 @@ export function AddressSearch() {
   const [query, setQuery] = useState("");
   const [selected, setSelected] = useState<AddressSuggestion | null>(null);
   const [radius, setRadius] = useState(500);
-  const [suggestions, setSuggestions] = useState<AddressSuggestion[]>([]);
-  const [suggestionState, setSuggestionState] = useState<SuggestionState>("idle");
   const [activeIndex, setActiveIndex] = useState(-1);
+  const [suggestionsDismissed, setSuggestionsDismissed] = useState(false);
+  const [submitError, setSubmitError] = useState(false);
   const [searchReady, setSearchReady] = useState<SearchReady | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+  const optionRefs = useRef<Array<HTMLLIElement | null>>([]);
+  const { suggestions, status: suggestionState, retry } = useAddressSuggestions(query, !selected);
+  const visibleSuggestions = suggestionsDismissed ? [] : suggestions;
 
   useEffect(() => {
-    if (selected || query.trim().length < 3) {
-      return;
-    }
-
-    const controller = new AbortController();
-    const timer = window.setTimeout(async () => {
-      setSuggestionState("loading");
-      setActiveIndex(-1);
-      try {
-        const response = await fetch(`/api/geocode?q=${encodeURIComponent(query.trim())}`, {
-          signal: controller.signal,
-        });
-        if (!response.ok) throw new Error("Address search failed");
-        const data: { suggestions?: AddressSuggestion[] } = await response.json();
-        if (controller.signal.aborted) return;
-        const results = Array.isArray(data.suggestions) ? data.suggestions : [];
-        setSuggestions(results);
-        setSuggestionState(results.length ? "ready" : "empty");
-      } catch {
-        if (!controller.signal.aborted) {
-          setSuggestions([]);
-          setSuggestionState("error");
-        }
-      }
-    }, 300);
-
-    return () => {
-      window.clearTimeout(timer);
-      controller.abort();
-    };
-  }, [query, selected]);
+    if (activeIndex >= 0) optionRefs.current[activeIndex]?.scrollIntoView({ block: "nearest" });
+  }, [activeIndex]);
 
   function chooseSuggestion(suggestion: AddressSuggestion) {
     setSelected(suggestion);
     setQuery(suggestion.label);
-    setSuggestions([]);
-    setSuggestionState("idle");
     setActiveIndex(-1);
+    setSuggestionsDismissed(false);
+    setSubmitError(false);
     setSearchReady(null);
   }
 
   function handleQueryChange(value: string) {
     setQuery(value);
     setSelected(null);
-    setSuggestions([]);
     setActiveIndex(-1);
+    setSuggestionsDismissed(false);
+    setSubmitError(false);
     setSearchReady(null);
-    setSuggestionState(value.trim().length >= 3 ? "loading" : "idle");
   }
 
   function handleKeyDown(event: KeyboardEvent<HTMLInputElement>) {
     if (event.key === "ArrowDown" && suggestions.length) {
       event.preventDefault();
-      setActiveIndex((index) => (index + 1) % suggestions.length);
+      setSuggestionsDismissed(false);
+      setActiveIndex((index) => (index < 0 ? 0 : (index + 1) % suggestions.length));
     } else if (event.key === "ArrowUp" && suggestions.length) {
       event.preventDefault();
+      setSuggestionsDismissed(false);
       setActiveIndex((index) => (index <= 0 ? suggestions.length - 1 : index - 1));
-    } else if (event.key === "Enter" && suggestions.length) {
+    } else if (event.key === "Enter" && activeIndex >= 0 && visibleSuggestions.length) {
       event.preventDefault();
-      chooseSuggestion(suggestions[activeIndex < 0 ? 0 : activeIndex]);
+      chooseSuggestion(visibleSuggestions[activeIndex]);
     } else if (event.key === "Escape") {
-      setSuggestions([]);
-      setSuggestionState("idle");
+      setSuggestionsDismissed(true);
       setActiveIndex(-1);
     }
   }
@@ -91,10 +66,10 @@ export function AddressSearch() {
   function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (!selected) {
+      setSubmitError(true);
       inputRef.current?.focus();
       return;
     }
-    setSuggestions([]);
     setSearchReady({ destination: selected, radiusMeters: radius });
   }
 
@@ -103,8 +78,10 @@ export function AddressSearch() {
     : suggestionState === "empty"
       ? "No Berlin addresses found. Try a street and house number."
       : suggestionState === "error"
-        ? "Address search is temporarily unavailable. Please try again."
-        : "";
+        ? "Address search is temporarily unavailable."
+        : suggestionState === "ready"
+          ? `${suggestions.length} Berlin addresses found. Use the arrow keys to choose one.`
+          : "";
 
   return (
     <section className={styles.searchPanel} aria-labelledby="search-title">
@@ -136,18 +113,20 @@ export function AddressSearch() {
               placeholder="e.g. Invalidenstraße 117"
               aria-autocomplete="list"
               aria-controls={listId}
-              aria-expanded={suggestions.length > 0}
-              aria-activedescendant={activeIndex >= 0 ? `${listId}-option-${activeIndex}` : undefined}
-              aria-describedby={`${inputId}-hint ${inputId}-status`}
+              aria-expanded={visibleSuggestions.length > 0}
+              aria-activedescendant={activeIndex >= 0 && visibleSuggestions.length ? `${listId}-option-${activeIndex}` : undefined}
+              aria-describedby={`${inputId}-hint ${inputId}-status${submitError ? ` ${inputId}-validation` : ""}`}
+              aria-invalid={submitError || undefined}
               aria-busy={suggestionState === "loading"}
               onChange={(event) => handleQueryChange(event.target.value)}
               onKeyDown={handleKeyDown}
             />
             {selected && <span className={styles.selectedMark} aria-label="Address selected">✓</span>}
-            {suggestions.length > 0 && (
+            {visibleSuggestions.length > 0 && (
               <ul className={styles.suggestions} id={listId} role="listbox" aria-label="Berlin address suggestions">
-                {suggestions.map((suggestion, index) => (
+                {visibleSuggestions.map((suggestion, index) => (
                   <li
+                    ref={(node) => { optionRefs.current[index] = node; }}
                     className={`${styles.suggestion} ${activeIndex === index ? styles.activeSuggestion : ""}`}
                     id={`${listId}-option-${index}`}
                     key={suggestion.id}
@@ -166,15 +145,31 @@ export function AddressSearch() {
               </ul>
             )}
           </div>
-          <span className={styles.hint} id={`${inputId}-hint`}>Start typing; select a suggestion to confirm the location.</span>
+          <span className={styles.hint} id={`${inputId}-hint`}>Enter at least 3 characters, then select a suggestion to confirm the location.</span>
           <span
-            className={suggestionState === "error" ? styles.errorStatus : styles.liveStatus}
+            className={styles.liveStatus}
             id={`${inputId}-status`}
-            role={suggestionState === "error" ? "alert" : "status"}
-            aria-live="polite"
+            role="status"
           >
             {liveMessage}
           </span>
+          {suggestionState === "error" && (
+            <button
+              className={styles.retry}
+              type="button"
+              onClick={() => {
+                setSuggestionsDismissed(false);
+                retry();
+              }}
+            >
+              Try again
+            </button>
+          )}
+          {submitError && (
+            <span className={styles.errorStatus} id={`${inputId}-validation`}>
+              Select a Berlin address suggestion before continuing.
+            </span>
+          )}
         </div>
 
         <fieldset className={styles.radiusField}>
@@ -199,7 +194,7 @@ export function AddressSearch() {
           <div className={styles.rangeLabels} aria-hidden="true"><span>100 m</span><span>1 km</span></div>
         </fieldset>
 
-        <button className={styles.submit} type="submit" disabled={!selected}>
+        <button className={styles.submit} type="submit">
           Check nearby streets
           <span aria-hidden="true">→</span>
         </button>
