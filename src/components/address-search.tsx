@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useId, useRef, useState } from "react";
-import type { KeyboardEvent, FormEvent } from "react";
+import type { KeyboardEvent, SubmitEvent } from "react";
 import type { AddressSuggestion } from "@/lib/geocoder/types";
 import styles from "./address-search.module.css";
 import { useAddressSuggestions } from "./use-address-suggestions";
@@ -63,7 +63,7 @@ export function AddressSearch() {
     }
   }
 
-  function handleSubmit(event: FormEvent<HTMLFormElement>) {
+  function handleSubmit(event: SubmitEvent<HTMLFormElement>) {
     event.preventDefault();
     if (!selected) {
       setSubmitError(true);
