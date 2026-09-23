@@ -159,6 +159,7 @@ export function AddressSearch() {
               type="button"
               onClick={() => {
                 setSuggestionsDismissed(false);
+                inputRef.current?.focus();
                 retry();
               }}
             >
