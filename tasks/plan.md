@@ -38,7 +38,7 @@ Repository/stack and provider decisions
 
 ### Phase 1: Foundation and address search
 - [x] Task 1: Confirm app stack, provider choices, and service contracts
-- [ ] Task 2: Deliver destination autocomplete and radius selection
+- [x] Task 2: Deliver destination autocomplete and radius selection
 - [ ] Checkpoint: Address resolves to a Berlin coordinate and radius survives submission
 
 ### Phase 2: Data-backed result slices
@@ -76,17 +76,17 @@ Repository/stack and provider decisions
 **Description:** Build the main search form with Berlin-focused address suggestions, keyboard-accessible selection, and a radius control spanning 100 m to 1 km. Only a selected suggestion with valid coordinates can be submitted; changing the query invalidates the previous selection.
 
 **Acceptance criteria:**
-- [ ] Typing yields selectable address suggestions constrained to Berlin and selecting one stores its display label and coordinates.
-- [ ] The radius control accepts values from 100 m through 1,000 m and displays the chosen value clearly.
-- [ ] Keyboard and screen-reader users can operate the suggestion list and radius control; loading, empty, and provider-error states are communicated.
+- [x] Typing yields selectable address suggestions filtered to Berlin and selecting one stores its display label and coordinates.
+- [x] The radius control accepts values from 100 m through 1,000 m and displays the chosen value clearly.
+- [x] Keyboard and screen-reader users can operate the suggestion list and radius control; loading, empty, and provider-error states are communicated.
 
-**Verification:** Run the project's focused UI checks and manually test a valid address, no suggestions, keyboard selection, changed query, and both radius bounds.
+**Verification:** Passed `pnpm test` (3 provider tests), `pnpm lint`, and `pnpm build`. In the in-app browser, queried Photon for Alexanderplatz, confirmed four deduplicated Berlin suggestions, selected by ArrowDown/Enter, set the radius to both 100 m and 1,000 m, submitted, and edited the query to verify stale selection clears and the empty state appears. Checked no horizontal overflow at 320, 768, 1,024, and 1,440 px. Live app/API requests returned HTTP 200.
 
 **Dependencies:** Task 1
 
-**Files likely touched:** search page/component, autocomplete component, provider adapter, focused UI checks (target 3–5 files)
+**Files touched:** Next.js/TypeScript scaffold (`package.json`, lockfile, TypeScript/lint/Next config, `.gitignore`), search page/layout/styles, accessible search form, Photon adapter and route handler, provider contract, and focused adapter tests.
 
-**Estimated scope:** Medium: 3–5 files
+**Estimated scope:** Large due to the initially empty repository; the user-facing flow is one vertical slice.
 
 ### Task 3: Show nearby street-parking supply and restrictions
 

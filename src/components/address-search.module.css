@@ -1,0 +1,46 @@
+.searchPanel { padding: 27px; border: 1px solid #e2e7df; border-radius: 8px; background: #fff; box-shadow: 0 6px 22px rgb(30 41 36 / 3%); }
+.panelHeading { display: flex; align-items: flex-start; gap: 14px; padding-bottom: 22px; border-bottom: 1px solid #edf0eb; }
+.step { display: grid; width: 30px; height: 30px; flex: 0 0 30px; place-items: center; border-radius: 50%; background: #eff4ee; color: var(--green); font-size: 10px; font-weight: 700; }
+.panelHeading h2 { margin: 1px 0 5px; font-family: Georgia, "Times New Roman", serif; font-size: 24px; font-weight: 400; letter-spacing: -.35px; }
+.panelHeading p { margin: 0; color: var(--muted); font-size: 12px; line-height: 1.55; }
+.form { display: grid; gap: 23px; padding-top: 23px; }
+.field { position: relative; }
+.label { display: block; margin-bottom: 9px; color: #39443d; font-size: 11px; font-weight: 700; }
+.inputWrap { position: relative; }
+.pin { position: absolute; z-index: 1; top: 14px; left: 13px; width: 19px; height: 19px; color: #75847a; pointer-events: none; }
+.addressInput { width: 100%; height: 48px; padding: 0 44px 0 42px; border: 1px solid #dce2da; border-radius: 5px; background: #fff; color: var(--ink); font-size: 13px; transition: border-color .15s, box-shadow .15s; }
+.addressInput::placeholder { color: #a0a8a2; }
+.addressInput:focus { border-color: #658471; outline: 0; box-shadow: 0 0 0 3px rgb(49 93 73 / 10%); }
+.addressInput::-webkit-search-cancel-button { cursor: pointer; }
+.selectedMark { position: absolute; top: 13px; right: 14px; color: var(--green); font-size: 17px; }
+.suggestions { position: absolute; z-index: 5; top: calc(100% + 5px); right: 0; left: 0; overflow: auto; max-height: 280px; margin: 0; padding: 5px; list-style: none; border: 1px solid #dce2da; border-radius: 6px; background: #fff; box-shadow: 0 12px 26px rgb(30 41 36 / 12%); }
+.suggestion { display: flex; align-items: center; gap: 11px; min-height: 50px; padding: 7px 9px; border-radius: 4px; cursor: pointer; }
+.suggestion:hover, .activeSuggestion { background: #f1f5f0; }
+.suggestionIcon { display: grid; width: 25px; height: 25px; flex: 0 0 25px; place-items: center; border: 1px solid #e8ece6; border-radius: 50%; color: #687a6e; font-size: 12px; }
+.suggestionText { display: grid; gap: 4px; min-width: 0; }
+.suggestionLabel { overflow: hidden; color: #25322a; font-size: 12px; font-weight: 600; text-overflow: ellipsis; white-space: nowrap; }
+.suggestionDetail { color: #7b857e; font-size: 10px; }
+.hint, .liveStatus, .errorStatus { display: block; min-height: 15px; margin-top: 7px; color: #808b83; font-size: 10px; line-height: 1.45; }
+.errorStatus { color: #a43c31; }
+.radiusField { min-width: 0; margin: 0; padding: 0; border: 0; }
+.radiusField legend { padding: 0; }
+.radiusValue { display: flex; justify-content: space-between; align-items: center; margin-bottom: 11px; color: #7a847d; font-size: 11px; }
+.radiusValue output { color: var(--green-dark); font-size: 14px; font-weight: 700; font-variant-numeric: tabular-nums; }
+.slider { display: block; width: 100%; height: 5px; margin: 0; border-radius: 99px; background: linear-gradient(to right, #51755f, #dfe7df); accent-color: var(--green); cursor: pointer; }
+.slider:focus-visible { outline-offset: 5px; }
+.rangeLabels { display: flex; justify-content: space-between; margin-top: 7px; color: #869088; font-size: 9px; }
+.submit { display: flex; align-items: center; justify-content: space-between; min-height: 46px; padding: 0 15px; border: 0; border-radius: 5px; background: var(--green); color: #fff; font-size: 12px; font-weight: 700; text-align: left; cursor: pointer; transition: background .15s, opacity .15s; }
+.submit:hover:not(:disabled) { background: var(--green-dark); }
+.submit:disabled { opacity: .45; cursor: not-allowed; }
+.submit span { font-size: 18px; font-weight: 400; }
+.attribution { margin: 16px 0 0; color: #89928b; font-size: 9px; }
+.attribution a { color: #667d6c; text-decoration: underline; text-underline-offset: 2px; }
+.readyState { display: flex; align-items: center; gap: 11px; margin-top: 18px; padding: 13px; border: 1px solid #dce8dd; border-radius: 5px; background: #f4f8f2; color: #68756c; font-size: 11px; line-height: 1.55; }
+.readyState strong { color: #2d4938; font-size: 12px; }
+.readyIcon { display: grid; width: 25px; height: 25px; flex: 0 0 25px; place-items: center; border-radius: 50%; background: #e2eee1; color: #315d49; font-size: 13px; }
+@media (max-width: 480px) {
+  .searchPanel { padding: 20px 17px; }
+  .panelHeading { gap: 11px; }
+  .panelHeading h2 { font-size: 22px; }
+  .form { gap: 19px; }
+}
