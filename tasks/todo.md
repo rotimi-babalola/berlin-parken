@@ -9,18 +9,18 @@ Tasks are ordered by dependency. See [plan.md](plan.md) for design choices, deta
 **Description:** Inspect the repository and choose the smallest suitable web stack and geocoding/autocomplete provider. Verify WFS capabilities, feature types, CRS, response format, spatial-filter behavior, relevant properties, pagination, and freshness metadata for the three official Berlin datasets. Record provider attribution/key requirements and a versioned internal result shape before building integrations.
 
 **Acceptance criteria:**
-- [ ] Record chosen stack and actual local run/build/test commands.
-- [ ] Document autocomplete provider constraints, attribution, and configuration needs.
-- [ ] Document live WFS endpoints, feature types, CRS, spatial queries, important properties, pagination, and freshness behavior for all three datasets.
-- [ ] Define a result contract separating supply/restriction facts, zone data, planned events, and experimental estimates.
+- [x] Record chosen stack and local run/build/lint commands; note that they are not runnable until the app scaffold exists.
+- [x] Document autocomplete provider constraints, attribution, availability, and configuration needs.
+- [x] Document live WFS endpoints, feature types, CRS, spatial queries, important properties, pagination, and freshness behavior for all three datasets.
+- [x] Define a result contract separating supply/restriction facts, zone data, planned events, and unsupported/experimental estimates.
 
-**Verification:** Inspect capabilities/schema and run one bounded spatial query per WFS layer; check available project commands.
+**Verification:** Passed: all three GetCapabilities and DescribeFeatureType requests returned HTTP 200; bounded GeoJSON GetFeature samples returned HTTP 200. Parking sample matched 39 features; Mitte zone and event samples matched 6 and 68 features, respectively. Confirmed pagination links, response timestamps, CRS, and layer properties. Repository inspection confirmed no application package manifest or runnable app commands yet.
 
 **Dependencies:** None
 
-**Files likely touched:** `README.md`, `docs/data-sources.md`, `docs/result-contract.md`
+**Files touched:** `README.md`, `docs/data-sources.md`, `docs/result-contract.md`, `tasks/plan.md`, `tasks/todo.md`
 
-**Estimated scope:** Medium (3 files)
+**Estimated scope:** Medium (5 files)
 
 ### Task 2: Deliver destination autocomplete and radius selection
 
@@ -40,7 +40,7 @@ Tasks are ordered by dependency. See [plan.md](plan.md) for design choices, deta
 **Estimated scope:** Medium (3–5 files)
 
 ### Checkpoint: After Tasks 1–2
-- [ ] Service contracts and provider decisions are documented.
+- [x] Service contracts and provider decisions are documented.
 - [ ] A user can select a Berlin destination and radius.
 - [ ] Stale coordinates cannot be submitted after editing the query.
 

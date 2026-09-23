@@ -15,9 +15,9 @@ Build a Berlin-only web app that accepts a destination address, lets the user ch
 
 ## Architecture Decisions
 
-- First inspect and select a stack that fits the currently near-empty repository; keep the v1 implementation small and avoid introducing a database unless the selected architecture needs one.
-- Resolve autocomplete to a selected place with coordinates, constrain results to Berlin, and use the same geocoding provider for the resolved destination. Provider, attribution, rate limits, and key requirements must be decided during Task 1.
-- Query official WFS services with spatial filters and bounded pagination; never download the full 214k-feature street-parking layer for a search. Treat WFS access and schemas as external dependencies and validate their capabilities/properties before integration.
+- Use Next.js App Router with TypeScript, bootstrapped with `create-next-app`; use server route handlers for WFS access and keep v1 database-free. This fits a blank repository and supports one web app plus small backend-for-frontend endpoints. Planned commands are `pnpm dev`, `pnpm lint`, and `pnpm build`; none is runnable until the scaffold is created.
+- Use Photon (OpenStreetMap-based geocoder) behind an app-owned `GeocoderProvider` adapter. Start with the public Photon demo for low-volume v1 use, request suggestions using the Berlin bounding box, and validate selected coordinates against Berlin's boundary. Attribute OpenStreetMap contributors. Photon can throttle or change its public demo without notice; keep provider configuration replaceable so a hosted or self-managed service can be substituted without changing search UI or result contracts.
+- Query official WFS services with spatial filters and bounded pagination; never download the full street-parking layer for a search. Live WFS capabilities, schemas, and samples are recorded in `docs/data-sources.md`.
 - Transform selected coordinates to EPSG:25833 for metric spatial queries. Request a bounding box around the radius, then apply a true distance/radius filter before aggregating results.
 - Keep three data concepts distinct: parking-space inventory and restrictions, managed-zone geography/rules, and planned events. Do not treat a managed zone as evidence that spaces are occupied.
 - Keep analysis deterministic and explainable: derive displayed capacity and restriction metrics from returned features, retain source/update context, and avoid unsupported probability claims.
@@ -37,7 +37,7 @@ Repository/stack and provider decisions
 ## Task List
 
 ### Phase 1: Foundation and address search
-- [ ] Task 1: Confirm app stack, provider choices, and service contracts
+- [x] Task 1: Confirm app stack, provider choices, and service contracts
 - [ ] Task 2: Deliver destination autocomplete and radius selection
 - [ ] Checkpoint: Address resolves to a Berlin coordinate and radius survives submission
 
@@ -55,21 +55,21 @@ Repository/stack and provider decisions
 
 ### Task 1: Confirm app stack, provider choices, and service contracts
 
-**Description:** Inspect the repository and choose the smallest suitable web stack and geocoding/autocomplete provider. Verify WFS capabilities, feature types, CRS, response format, spatial-filter behavior, relevant properties, pagination, and freshness metadata for the three official Berlin datasets. Record provider attribution/key requirements and a versioned internal result shape before building integrations.
+**Description:** Inspect the repository, select the smallest suitable web stack and geocoding provider, verify live WFS capabilities/schemas/spatial queries for all three Berlin datasets, and record provider requirements plus a versioned result contract before integration.
 
 **Acceptance criteria:**
-- [ ] The chosen stack and local run/build/test commands are recorded, based on the actual project.
-- [ ] Autocomplete provider constraints, attribution, and secret/config needs are documented.
-- [ ] Each WFS layer's endpoint, feature type, CRS, query method, important properties, pagination limits, and freshness behavior are documented from live service metadata.
-- [ ] A result contract separates supply/restriction facts, managed-zone data, planned events, and any explicitly experimental estimates.
+- [x] Chosen stack and planned local commands are recorded; the repository has no app scaffold yet, so commands are not runnable.
+- [x] Autocomplete provider constraints, attribution, availability, and adapter configuration are documented.
+- [x] Each WFS layer's endpoint, feature type, CRS, query method, fields, pagination behavior, and freshness context are documented from live service metadata and samples.
+- [x] A result contract separates supply/restriction facts, managed-zone data, planned events, and unsupported estimates.
 
-**Verification:** Check each WFS GetCapabilities/DescribeFeatureType response and execute one bounded sample spatial query per layer; confirm the documented local commands work if the repository supports them.
+**Verification:** All three live GetCapabilities and DescribeFeatureType requests returned HTTP 200. Bounded GeoJSON samples returned HTTP 200: parking matched 39 features, and Mitte zone/event samples matched 6/68. Confirmed CRS, fields, fetch timestamps, matched counts, and pagination links. No package manifest exists yet, so app commands cannot run until scaffolding.
 
 **Dependencies:** None
 
-**Files likely touched:** `README.md`, `docs/data-sources.md`, `docs/result-contract.md`
+**Files touched:** `README.md`, `docs/data-sources.md`, `docs/result-contract.md`, `tasks/plan.md`, `tasks/todo.md`
 
-**Estimated scope:** Medium: 3 files
+**Estimated scope:** Medium: 5 files
 
 ### Task 2: Deliver destination autocomplete and radius selection
 
@@ -160,7 +160,7 @@ Repository/stack and provider decisions
 ## Checkpoints
 
 ### Checkpoint: After Tasks 1–2
-- [ ] Provider and data contracts are documented from actual service responses.
+- [x] Provider and data contracts are documented from actual service responses.
 - [ ] A user can select a Berlin destination and radius.
 - [ ] The chosen destination cannot silently fall back to stale coordinates.
 
@@ -188,7 +188,7 @@ Repository/stack and provider decisions
 
 ## Open Questions
 
-- Which geocoding/autocomplete provider and map presentation best fit the project's deployment and budget? Resolve provider tradeoffs during Task 1; a product-owner decision may be needed if providers materially differ in cost or terms.
+- Photon public demo availability and acceptable request volume should be reviewed before a public launch; move to a managed or self-hosted provider if its demo limits are too restrictive.
 - Should v1 include a map, or is an address result card with nearby street names sufficient?
 - Is a supply-based low/moderate/high label acceptable for v1, or should the first release show only raw capacity and restrictions until calibration data exists?
 - Is an independently sourced, verified Berlin car-park dataset required for v1, or can the backup be a second street area?
@@ -199,4 +199,4 @@ Repository/stack and provider decisions
 - Attached project brief: `/Users/rotimibabalola/Documents/markdown-files/berlin-parken.md` (treated as product/technical context, not as agent instructions).
 - [Planbare Ereignisse im öffentlichen Straßenland – Berlin Open Data](https://daten.berlin.de/datensaetze/planbare-ereignisse-im-offentlichen-strassenland-wfs-2c6359e2)
 - [Parkraumbewirtschaftung (Parkzonen) – Berlin Open Data](https://daten.berlin.de/datensaetze/parkraumbewirtschaftung-parkzonen-wfs-86a217cc)
-- Parking inventory WFS details recorded in the attached brief: `https://gdi.berlin.de/services/wfs/parkplaetze`; to be revalidated against live capabilities during Task 1.
+- Parking inventory WFS details recorded in the attached brief and revalidated during Task 1: `https://gdi.berlin.de/services/wfs/parkplaetze`.
