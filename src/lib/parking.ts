@@ -1,0 +1,344 @@
+export type ParkingUsability =
+  | "usable"
+  | "conditional"
+  | "restricted"
+  | "unknown";
+
+export type ParkingSummary = {
+  status: "available" | "empty" | "partial" | "unavailable";
+  fetchedAt?: string;
+  message?: string;
+  mappedSpaces: number;
+  usableSpaces: number;
+  conditionalSpaces: number;
+  restrictedSpaces: number;
+  unknownSpaces: number;
+  featureCount: number;
+  streets: Array<{ name: string; mappedSpaces: number; features: number }>;
+};
+
+type Position = [number, number];
+type Ring = Position[];
+type Polygon = Ring[];
+type Geometry = {
+  type: "Polygon" | "MultiPolygon";
+  coordinates: Polygon | Polygon[];
+};
+type Feature = {
+  type: "Feature";
+  id?: string | number;
+  geometry: Geometry | null;
+  properties: Record<string, unknown>;
+};
+type FeatureCollection = {
+  type: "FeatureCollection";
+  features: Feature[];
+  totalFeatures?: number;
+  links?: Array<{ rel: string; href: string }>;
+};
+
+const endpoint = "https://gdi.berlin.de/services/wfs/parkplaetze";
+const maxPages = 5;
+const pageSize = 500;
+
+export function toEpsg25833(longitude: number, latitude: number): Position {
+  const a = 6378137;
+  const e = 0.08181919084262149;
+  const k0 = 0.9996;
+  const radians = Math.PI / 180;
+  const lat = latitude * radians;
+  const lon = longitude * radians;
+  const lon0 = 15 * radians;
+  const ep2 = (e * e) / (1 - e * e);
+  const n = a / Math.sqrt(1 - e * e * Math.sin(lat) ** 2);
+  const t = Math.tan(lat) ** 2;
+  const c = ep2 * Math.cos(lat) ** 2;
+  const aa = Math.cos(lat) * (lon - lon0);
+  const m =
+    a *
+    ((1 - (e * e) / 4 - (3 * e ** 4) / 64 - (5 * e ** 6) / 256) * lat -
+      ((3 * e ** 2) / 8 + (3 * e ** 4) / 32 + (45 * e ** 6) / 1024) *
+        Math.sin(2 * lat) +
+      ((15 * e ** 4) / 256 + (45 * e ** 6) / 1024) * Math.sin(4 * lat) -
+      ((35 * e ** 6) / 3072) * Math.sin(6 * lat));
+  const east =
+    500000 +
+    k0 *
+      n *
+      (aa +
+        ((1 - t + c) * aa ** 3) / 6 +
+        ((5 - 18 * t + t ** 2 + 72 * c - 58 * ep2) * aa ** 5) / 120);
+  const north =
+    k0 *
+    (m +
+      n *
+        Math.tan(lat) *
+        (aa ** 2 / 2 +
+          ((5 - t + 9 * c + 4 * c ** 2) * aa ** 4) / 24 +
+          ((61 - 58 * t + t ** 2 + 600 * c - 330 * ep2) * aa ** 6) / 720));
+  return [east, north];
+}
+
+function segmentDistance(
+  point: Position,
+  start: Position,
+  end: Position,
+): number {
+  const dx = end[0] - start[0];
+  const dy = end[1] - start[1];
+  const lengthSquared = dx * dx + dy * dy;
+  const fraction = lengthSquared
+    ? Math.max(
+        0,
+        Math.min(
+          1,
+          ((point[0] - start[0]) * dx + (point[1] - start[1]) * dy) /
+            lengthSquared,
+        ),
+      )
+    : 0;
+  return Math.hypot(
+    point[0] - start[0] - fraction * dx,
+    point[1] - start[1] - fraction * dy,
+  );
+}
+
+function ringContains(point: Position, ring: Ring): boolean {
+  let inside = false;
+  for (let i = 0, j = ring.length - 1; i < ring.length; j = i++) {
+    const [x, y] = ring[i];
+    const [jx, jy] = ring[j];
+    if (
+      y > point[1] !== jy > point[1] &&
+      point[0] < ((jx - x) * (point[1] - y)) / (jy - y) + x
+    )
+      inside = !inside;
+  }
+  return inside;
+}
+
+function ringDistance(point: Position, ring: Ring): number {
+  let distance = Infinity;
+  for (let i = 1; i < ring.length; i++)
+    distance = Math.min(distance, segmentDistance(point, ring[i - 1], ring[i]));
+  return distance;
+}
+
+function geometryDistance(point: Position, geometry: Geometry): number {
+  const polygons =
+    geometry.type === "Polygon"
+      ? [geometry.coordinates as Polygon]
+      : (geometry.coordinates as Polygon[]);
+  let distance = Infinity;
+  for (const polygon of polygons) {
+    if (
+      polygon[0] &&
+      ringContains(point, polygon[0]) &&
+      !polygon.slice(1).some((hole) => ringContains(point, hole))
+    )
+      return 0;
+    for (const ring of polygon)
+      distance = Math.min(distance, ringDistance(point, ring));
+  }
+  return distance;
+}
+
+function classify(category: string, publicLand: string): ParkingUsability {
+  if (category === "Parken (ohne Beschränkungen)")
+    return publicLand === "Ja" ? "usable" : "restricted";
+  if (
+    ["Parken mit zeitlicher Beschränkung", "Beschränkte Parkdauer"].includes(
+      category,
+    )
+  )
+    return "conditional";
+  if (
+    ["Parkverbot", "Nutzungsgruppe", "Ladezone", "Beschränkungen"].includes(
+      category,
+    )
+  )
+    return "restricted";
+  return "unknown";
+}
+
+function validCollection(value: unknown): value is FeatureCollection {
+  if (!value || typeof value !== "object") return false;
+  const collection = value as FeatureCollection;
+  return (
+    collection.type === "FeatureCollection" &&
+    Array.isArray(collection.features) &&
+    collection.features.every(
+      (feature) =>
+        feature?.type === "Feature" &&
+        feature.properties &&
+        typeof feature.properties === "object" &&
+        (feature.geometry === null ||
+          ((feature.geometry.type === "Polygon" ||
+            feature.geometry.type === "MultiPolygon") &&
+            validCoordinates(feature.geometry.coordinates))),
+    )
+  );
+}
+
+function validCoordinates(value: unknown): boolean {
+  if (!Array.isArray(value)) return false;
+  if (
+    value.length >= 2 &&
+    typeof value[0] === "number" &&
+    typeof value[1] === "number"
+  )
+    return Number.isFinite(value[0]) && Number.isFinite(value[1]);
+  return value.length > 0 && value.every(validCoordinates);
+}
+
+export async function getNearbyParking(
+  longitude: number,
+  latitude: number,
+  radiusMeters: number,
+): Promise<ParkingSummary> {
+  const unavailable = (message: string): ParkingSummary => ({
+    status: "unavailable",
+    message,
+    mappedSpaces: 0,
+    usableSpaces: 0,
+    conditionalSpaces: 0,
+    restrictedSpaces: 0,
+    unknownSpaces: 0,
+    featureCount: 0,
+    streets: [],
+  });
+  const [east, north] = toEpsg25833(longitude, latitude);
+  const params = new URLSearchParams({
+    SERVICE: "WFS",
+    VERSION: "2.0.0",
+    REQUEST: "GetFeature",
+    TYPENAMES: "parkplaetze:parkplaetze_aussen",
+    COUNT: String(pageSize),
+    OUTPUTFORMAT: "application/json",
+    BBOX: `${east - radiusMeters},${north - radiusMeters},${east + radiusMeters},${north + radiusMeters},EPSG:25833`,
+  });
+  let url: URL | null = new URL(`${endpoint}?${params}`);
+  console.log({ url: url.toString() });
+  const features: Feature[] = [];
+  let totalFeatures: number | undefined;
+  let fetchedAt = new Date().toISOString();
+  try {
+    for (let page = 0; page < maxPages && url; page++) {
+      const response = await fetch(url, {
+        signal: AbortSignal.timeout(8000),
+        cache: "no-store",
+      });
+      if (!response.ok)
+        throw new Error("Parking data service returned an error.");
+      const raw: unknown = await response.json();
+      if (!validCollection(raw))
+        throw new Error("Parking data service returned an invalid response.");
+      totalFeatures =
+        typeof raw.totalFeatures === "number"
+          ? raw.totalFeatures
+          : totalFeatures;
+      fetchedAt =
+        typeof (raw as FeatureCollection & { timeStamp?: string }).timeStamp ===
+        "string"
+          ? (raw as FeatureCollection & { timeStamp: string }).timeStamp
+          : fetchedAt;
+      features.push(...raw.features);
+      const next = raw.links?.find((link) => link.rel === "next")?.href;
+      if (!next) {
+        url = null;
+        break;
+      }
+      const nextUrl = new URL(next, endpoint);
+      if (
+        nextUrl.origin !== new URL(endpoint).origin ||
+        nextUrl.pathname !== new URL(endpoint).pathname
+      )
+        throw new Error("Parking data service returned an invalid page link.");
+      url = nextUrl;
+    }
+  } catch (error) {
+    return features.length
+      ? summarize(
+          features,
+          [east, north],
+          radiusMeters,
+          fetchedAt,
+          true,
+          error instanceof Error
+            ? error.message
+            : "Parking data is incomplete.",
+        )
+      : unavailable(
+          error instanceof Error
+            ? error.message
+            : "Parking data is temporarily unavailable.",
+        );
+  }
+
+  const budgetReached =
+    !!url || (totalFeatures !== undefined && features.length < totalFeatures);
+  return summarize(
+    features,
+    [east, north],
+    radiusMeters,
+    fetchedAt,
+    budgetReached,
+    budgetReached
+      ? "Some nearby records may be missing because the service page limit was reached."
+      : undefined,
+  );
+}
+
+function summarize(
+  features: Feature[],
+  point: Position,
+  radius: number,
+  fetchedAt: string,
+  partial?: boolean,
+  message?: string,
+): ParkingSummary {
+  features = features.filter(
+    (feature) =>
+      feature.geometry && geometryDistance(point, feature.geometry) <= radius,
+  );
+  const status = partial ? "partial" : features.length ? "available" : "empty";
+  const result: ParkingSummary = {
+    status,
+    fetchedAt,
+    ...(message ? { message } : {}),
+    mappedSpaces: 0,
+    usableSpaces: 0,
+    conditionalSpaces: 0,
+    restrictedSpaces: 0,
+    unknownSpaces: 0,
+    featureCount: features.length,
+    streets: [],
+  };
+  const streets = new Map<string, { mappedSpaces: number; features: number }>();
+  for (const feature of features) {
+    const properties = feature.properties;
+    const spaces = Number(properties.anzahl_parkplaetze);
+    const capacity = Number.isFinite(spaces) && spaces > 0 ? spaces : 0;
+    const usability = classify(
+      String(properties.category ?? ""),
+      String(properties.oeffentlichesstrassenland ?? ""),
+    );
+    result.mappedSpaces += capacity;
+    if (usability === "usable") result.usableSpaces += capacity;
+    else if (usability === "conditional") result.conditionalSpaces += capacity;
+    else if (usability === "restricted") result.restrictedSpaces += capacity;
+    else result.unknownSpaces += capacity;
+    const name = String(properties.strassenname ?? "").trim();
+    if (name) {
+      const street = streets.get(name) ?? { mappedSpaces: 0, features: 0 };
+      street.mappedSpaces += capacity;
+      street.features++;
+      streets.set(name, street);
+    }
+  }
+  result.streets = [...streets]
+    .map(([name, values]) => ({ name, ...values }))
+    .sort((a, b) => b.mappedSpaces - a.mappedSpaces)
+    .slice(0, 8);
+  return result;
+}

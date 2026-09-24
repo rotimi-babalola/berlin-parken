@@ -3,8 +3,10 @@
 import { useEffect, useId, useRef, useState } from "react";
 import type { KeyboardEvent, SubmitEvent } from "react";
 import type { AddressSuggestion } from "@/lib/geocoder/types";
-import styles from "./address-search.module.css";
+import type { ParkingSummary } from "@/lib/parking";
 import { useAddressSuggestions } from "./use-address-suggestions";
+
+import styles from "./address-search.module.css";
 
 type SearchReady = { destination: AddressSuggestion; radiusMeters: number };
 
@@ -18,13 +20,20 @@ export function AddressSearch() {
   const [suggestionsDismissed, setSuggestionsDismissed] = useState(false);
   const [submitError, setSubmitError] = useState(false);
   const [searchReady, setSearchReady] = useState<SearchReady | null>(null);
+  const [parking, setParking] = useState<ParkingSummary | null>(null);
+  const [parkingLoading, setParkingLoading] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
   const optionRefs = useRef<Array<HTMLLIElement | null>>([]);
-  const { suggestions, status: suggestionState, retry } = useAddressSuggestions(query, !selected);
+  const {
+    suggestions,
+    status: suggestionState,
+    retry,
+  } = useAddressSuggestions(query, !selected);
   const visibleSuggestions = suggestionsDismissed ? [] : suggestions;
 
   useEffect(() => {
-    if (activeIndex >= 0) optionRefs.current[activeIndex]?.scrollIntoView({ block: "nearest" });
+    if (activeIndex >= 0)
+      optionRefs.current[activeIndex]?.scrollIntoView({ block: "nearest" });
   }, [activeIndex]);
 
   function chooseSuggestion(suggestion: AddressSuggestion) {
@@ -34,6 +43,7 @@ export function AddressSearch() {
     setSuggestionsDismissed(false);
     setSubmitError(false);
     setSearchReady(null);
+    setParking(null);
   }
 
   function handleQueryChange(value: string) {
@@ -43,18 +53,27 @@ export function AddressSearch() {
     setSuggestionsDismissed(false);
     setSubmitError(false);
     setSearchReady(null);
+    setParking(null);
   }
 
   function handleKeyDown(event: KeyboardEvent<HTMLInputElement>) {
     if (event.key === "ArrowDown" && suggestions.length) {
       event.preventDefault();
       setSuggestionsDismissed(false);
-      setActiveIndex((index) => (index < 0 ? 0 : (index + 1) % suggestions.length));
+      setActiveIndex((index) =>
+        index < 0 ? 0 : (index + 1) % suggestions.length,
+      );
     } else if (event.key === "ArrowUp" && suggestions.length) {
       event.preventDefault();
       setSuggestionsDismissed(false);
-      setActiveIndex((index) => (index <= 0 ? suggestions.length - 1 : index - 1));
-    } else if (event.key === "Enter" && activeIndex >= 0 && visibleSuggestions.length) {
+      setActiveIndex((index) =>
+        index <= 0 ? suggestions.length - 1 : index - 1,
+      );
+    } else if (
+      event.key === "Enter" &&
+      activeIndex >= 0 &&
+      visibleSuggestions.length
+    ) {
       event.preventDefault();
       chooseSuggestion(visibleSuggestions[activeIndex]);
     } else if (event.key === "Escape") {
@@ -71,6 +90,33 @@ export function AddressSearch() {
       return;
     }
     setSearchReady({ destination: selected, radiusMeters: radius });
+    setParking(null);
+    setParkingLoading(true);
+    const params = new URLSearchParams({
+      longitude: String(selected.longitude),
+      latitude: String(selected.latitude),
+      radius: String(radius),
+    });
+    fetch(`/api/parking?${params}`)
+      .then(async (response) => {
+        if (!response.ok)
+          throw new Error("Parking data is temporarily unavailable.");
+        setParking((await response.json()) as ParkingSummary);
+      })
+      .catch(() =>
+        setParking({
+          status: "unavailable",
+          message: "Parking data is temporarily unavailable.",
+          mappedSpaces: 0,
+          usableSpaces: 0,
+          conditionalSpaces: 0,
+          restrictedSpaces: 0,
+          unknownSpaces: 0,
+          featureCount: 0,
+          streets: [],
+        }),
+      )
+      .finally(() => setParkingLoading(false));
   }
 
   let liveMessage = "";
@@ -101,11 +147,28 @@ export function AddressSearch() {
 
       <form className={styles.form} onSubmit={handleSubmit}>
         <div className={styles.field}>
-          <label className={styles.label} htmlFor={inputId}>Destination address</label>
+          <label className={styles.label} htmlFor={inputId}>
+            Destination address
+          </label>
           <div className={styles.inputWrap}>
-            <svg aria-hidden="true" className={styles.pin} viewBox="0 0 24 24" fill="none">
-              <path d="M19 10c0 5-7 11-7 11S5 15 5 10a7 7 0 1 1 14 0Z" stroke="currentColor" strokeWidth="1.7" />
-              <circle cx="12" cy="10" r="2.3" stroke="currentColor" strokeWidth="1.7" />
+            <svg
+              aria-hidden="true"
+              className={styles.pin}
+              viewBox="0 0 24 24"
+              fill="none"
+            >
+              <path
+                d="M19 10c0 5-7 11-7 11S5 15 5 10a7 7 0 1 1 14 0Z"
+                stroke="currentColor"
+                strokeWidth="1.7"
+              />
+              <circle
+                cx="12"
+                cy="10"
+                r="2.3"
+                stroke="currentColor"
+                strokeWidth="1.7"
+              />
             </svg>
             <input
               ref={inputRef}
@@ -120,19 +183,37 @@ export function AddressSearch() {
               aria-autocomplete="list"
               aria-controls={listId}
               aria-expanded={visibleSuggestions.length > 0}
-              aria-activedescendant={activeIndex >= 0 && visibleSuggestions.length ? `${listId}-option-${activeIndex}` : undefined}
+              aria-activedescendant={
+                activeIndex >= 0 && visibleSuggestions.length
+                  ? `${listId}-option-${activeIndex}`
+                  : undefined
+              }
               aria-describedby={`${inputId}-hint ${inputId}-status${submitError ? ` ${inputId}-validation` : ""}`}
               aria-invalid={submitError || undefined}
               aria-busy={suggestionState === "loading"}
               onChange={(event) => handleQueryChange(event.target.value)}
               onKeyDown={handleKeyDown}
             />
-            {selected && <span className={styles.selectedMark} aria-label="Address selected">✓</span>}
+            {selected && (
+              <span
+                className={styles.selectedMark}
+                aria-label="Address selected"
+              >
+                ✓
+              </span>
+            )}
             {visibleSuggestions.length > 0 && (
-              <ul className={styles.suggestions} id={listId} role="listbox" aria-label="Berlin address suggestions">
+              <ul
+                className={styles.suggestions}
+                id={listId}
+                role="listbox"
+                aria-label="Berlin address suggestions"
+              >
                 {visibleSuggestions.map((suggestion, index) => (
                   <li
-                    ref={(node) => { optionRefs.current[index] = node; }}
+                    ref={(node) => {
+                      optionRefs.current[index] = node;
+                    }}
                     className={`${styles.suggestion} ${activeIndex === index ? styles.activeSuggestion : ""}`}
                     id={`${listId}-option-${index}`}
                     key={suggestion.id}
@@ -141,17 +222,26 @@ export function AddressSearch() {
                     onMouseDown={(event) => event.preventDefault()}
                     onClick={() => chooseSuggestion(suggestion)}
                   >
-                    <span className={styles.suggestionIcon} aria-hidden="true">↗</span>
+                    <span className={styles.suggestionIcon} aria-hidden="true">
+                      ↗
+                    </span>
                     <span className={styles.suggestionText}>
-                      <span className={styles.suggestionLabel}>{suggestion.label}</span>
-                      <span className={styles.suggestionDetail}>{suggestion.detail}</span>
+                      <span className={styles.suggestionLabel}>
+                        {suggestion.label}
+                      </span>
+                      <span className={styles.suggestionDetail}>
+                        {suggestion.detail}
+                      </span>
                     </span>
                   </li>
                 ))}
               </ul>
             )}
           </div>
-          <span className={styles.hint} id={`${inputId}-hint`}>Enter at least 3 characters, then select a suggestion to confirm the location.</span>
+          <span className={styles.hint} id={`${inputId}-hint`}>
+            Enter at least 3 characters, then select a suggestion to confirm the
+            location.
+          </span>
           <span
             className={styles.liveStatus}
             id={`${inputId}-status`}
@@ -180,10 +270,14 @@ export function AddressSearch() {
         </div>
 
         <fieldset className={styles.radiusField}>
-          <legend className={styles.label}>How far are you willing to walk?</legend>
+          <legend className={styles.label}>
+            How far are you willing to walk?
+          </legend>
           <div className={styles.radiusValue}>
             <span>Search radius</span>
-            <output htmlFor={`${inputId}-radius`} aria-live="off">{radius < 1000 ? `${radius} m` : "1 km"}</output>
+            <output htmlFor={`${inputId}-radius`} aria-live="off">
+              {radius < 1000 ? `${radius} m` : "1 km"}
+            </output>
           </div>
           <input
             className={styles.slider}
@@ -198,7 +292,10 @@ export function AddressSearch() {
               setSearchReady(null);
             }}
           />
-          <div className={styles.rangeLabels} aria-hidden="true"><span>100 m</span><span>1 km</span></div>
+          <div className={styles.rangeLabels} aria-hidden="true">
+            <span>100 m</span>
+            <span>1 km</span>
+          </div>
         </fieldset>
 
         <button className={styles.submit} type="submit">
@@ -208,14 +305,113 @@ export function AddressSearch() {
       </form>
 
       <p className={styles.attribution}>
-        Suggestions by Photon · © <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noreferrer">OpenStreetMap contributors</a>
+        Suggestions by Photon · ©{" "}
+        <a
+          href="https://www.openstreetmap.org/copyright"
+          target="_blank"
+          rel="noreferrer"
+        >
+          OpenStreetMap contributors
+        </a>
       </p>
 
       {searchReady && (
         <div className={styles.readyState} role="status" aria-live="polite">
-          <span className={styles.readyIcon} aria-hidden="true">✓</span>
-          <span><strong>Search area set</strong><br />{searchReady.destination.label} · within {searchReady.radiusMeters < 1000 ? `${searchReady.radiusMeters} m` : "1 km"}</span>
+          <span className={styles.readyIcon} aria-hidden="true">
+            ✓
+          </span>
+          <span>
+            <strong>Search area set</strong>
+            <br />
+            {searchReady.destination.label} · within{" "}
+            {searchReady.radiusMeters < 1000
+              ? `${searchReady.radiusMeters} m`
+              : "1 km"}
+          </span>
         </div>
+      )}
+      {searchReady && (
+        <section
+          className={styles.parkingResult}
+          aria-labelledby="parking-result-title"
+          aria-live="polite"
+        >
+          <h3 id="parking-result-title">Mapped street parking</h3>
+          <p className={styles.resultAddress}>
+            {searchReady.destination.label} · within{" "}
+            {searchReady.radiusMeters < 1000
+              ? `${searchReady.radiusMeters} m`
+              : "1 km"}
+          </p>
+          {parkingLoading ? (
+            <p role="status">Loading nearby parking data…</p>
+          ) : parking?.status === "unavailable" ? (
+            <p role="status">Parking data is unavailable. {parking.message}</p>
+          ) : parking ? (
+            <>
+              {parking.status === "empty" ? (
+                <p>No mapped parking areas were returned for this radius.</p>
+              ) : (
+                <>
+                  <p className={styles.capacity}>
+                    {parking.mappedSpaces.toLocaleString()}{" "}
+                    <span>
+                      mapped spaces across {parking.featureCount} nearby areas
+                    </span>
+                  </p>
+                  <dl className={styles.supplyBreakdown}>
+                    <div>
+                      <dt>Unrestricted</dt>
+                      <dd>{parking.usableSpaces.toLocaleString()}</dd>
+                    </div>
+                    <div>
+                      <dt>Conditional</dt>
+                      <dd>{parking.conditionalSpaces.toLocaleString()}</dd>
+                    </div>
+                    <div>
+                      <dt>Restricted</dt>
+                      <dd>{parking.restrictedSpaces.toLocaleString()}</dd>
+                    </div>
+                    <div>
+                      <dt>Unknown category</dt>
+                      <dd>{parking.unknownSpaces.toLocaleString()}</dd>
+                    </div>
+                  </dl>
+                  {parking.streets.length > 0 && (
+                    <div className={styles.streetList}>
+                      <strong>Nearby streets</strong>
+                      {parking.streets.map((street) => (
+                        <p key={street.name}>
+                          {street.name}
+                          <span>
+                            {street.mappedSpaces.toLocaleString()} mapped
+                          </span>
+                        </p>
+                      ))}
+                    </div>
+                  )}
+                </>
+              )}
+              {parking.status === "partial" && (
+                <p role="status">Partial results: {parking.message}</p>
+              )}
+              <p className={styles.sourceNote}>
+                Mapped capacity and restrictions from{" "}
+                <a
+                  href="https://daten.berlin.de/datensaetze/parken-im-strassenraum-wfs-2eb40df3"
+                  target="_blank"
+                  rel="noreferrer"
+                >
+                  Berlin Open Data
+                </a>
+                . This inventory is not live availability.
+                {parking.fetchedAt
+                  ? ` Retrieved ${new Date(parking.fetchedAt).toLocaleString()}.`
+                  : ""}
+              </p>
+            </>
+          ) : null}
+        </section>
       )}
     </section>
   );

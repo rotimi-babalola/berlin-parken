@@ -291,6 +291,81 @@
   color: #315d49;
   font-size: 13px;
 }
+.parkingResult {
+  margin-top: 18px;
+  padding-top: 17px;
+  border-top: 1px solid #edf0eb;
+  color: var(--muted);
+  font-size: 11px;
+  line-height: 1.55;
+}
+.parkingResult h3 {
+  margin: 0;
+  color: #26362c;
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: 20px;
+  font-weight: 400;
+}
+.resultAddress {
+  margin: 4px 0 13px;
+}
+.capacity {
+  margin: 0 0 12px;
+  color: #26362c;
+  font-size: 23px;
+  font-weight: 700;
+}
+.capacity span {
+  color: var(--muted);
+  font-size: 10px;
+  font-weight: 400;
+}
+.supplyBreakdown {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  margin: 0;
+}
+.supplyBreakdown div {
+  padding: 9px 10px;
+  border: 1px solid #edf0eb;
+  border-radius: 4px;
+}
+.supplyBreakdown dt {
+  font-size: 10px;
+}
+.supplyBreakdown dd {
+  margin: 2px 0 0;
+  color: #26362c;
+  font-size: 14px;
+  font-weight: 700;
+}
+.streetList {
+  margin-top: 14px;
+}
+.streetList strong {
+  color: #26362c;
+}
+.streetList p {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  margin: 6px 0 0;
+  padding-bottom: 6px;
+  border-bottom: 1px solid #edf0eb;
+}
+.streetList p span {
+  flex: 0 0 auto;
+}
+.sourceNote {
+  margin: 14px 0 0;
+  font-size: 9px;
+}
+.sourceNote a {
+  color: inherit;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
 @media (max-width: 480px) {
   .searchPanel {
     padding: 20px 17px;
