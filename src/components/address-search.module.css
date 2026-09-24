@@ -3,7 +3,6 @@
   border: 1px solid #e2e7df;
   border-radius: 8px;
   background: #fff;
-  box-shadow: 0 6px 22px rgb(30 41 36 / 3%);
 }
 .panelHeading {
   display: flex;
@@ -11,18 +10,6 @@
   gap: 14px;
   padding-bottom: 22px;
   border-bottom: 1px solid #edf0eb;
-}
-.step {
-  display: grid;
-  width: 30px;
-  height: 30px;
-  flex: 0 0 30px;
-  place-items: center;
-  border-radius: 50%;
-  background: #eff4ee;
-  color: var(--green);
-  font-size: 10px;
-  font-weight: 700;
 }
 .panelHeading h2 {
   margin: 1px 0 5px;
@@ -79,12 +66,17 @@
     box-shadow 0.15s;
 }
 .addressInput::placeholder {
-  color: #a0a8a2;
+  color: var(--muted);
 }
 .addressInput:focus {
   border-color: #658471;
   outline: 0;
   box-shadow: 0 0 0 3px rgb(49 93 73 / 10%);
+}
+.addressInput:focus-visible {
+  outline: 3px solid #b47c42;
+  outline-offset: 3px;
+  box-shadow: none;
 }
 .addressInput[aria-invalid="true"] {
   border-color: #a43c31;
@@ -163,7 +155,7 @@
   min-height: 15px;
   margin-top: 7px;
   color: var(--muted);
-  font-size: 10px;
+  font-size: 11px;
   line-height: 1.45;
 }
 .errorStatus {
@@ -213,6 +205,24 @@
   background: linear-gradient(to right, #51755f, #dfe7df);
   accent-color: var(--green);
   cursor: pointer;
+  touch-action: pan-y;
+}
+.slider::-webkit-slider-thumb {
+  width: 24px;
+  height: 24px;
+  border: 3px solid #fff;
+  border-radius: 50%;
+  background: var(--green);
+  box-shadow: 0 0 0 1px var(--green);
+  appearance: none;
+}
+.slider::-moz-range-thumb {
+  width: 18px;
+  height: 18px;
+  border: 3px solid #fff;
+  border-radius: 50%;
+  background: var(--green);
+  box-shadow: 0 0 0 1px var(--green);
 }
 .slider:focus-visible {
   outline-offset: 5px;
@@ -256,7 +266,7 @@
 .attribution {
   margin: 16px 0 0;
   color: var(--muted);
-  font-size: 9px;
+  font-size: 10px;
 }
 .attribution a {
   color: var(--muted);
@@ -298,6 +308,37 @@
   color: var(--muted);
   font-size: 11px;
   line-height: 1.55;
+}
+.loadingState {
+  display: grid;
+  gap: 9px;
+  padding: 4px 0;
+}
+.loadingState p {
+  margin: 0;
+}
+.skeleton {
+  display: block;
+  height: 12px;
+  border-radius: 3px;
+  background: linear-gradient(90deg, #edf0eb 25%, #f5f6f3 50%, #edf0eb 75%);
+  background-size: 200% 100%;
+  animation: loadingSweep 1.6s ease-in-out infinite;
+}
+.skeleton:first-child {
+  width: 42%;
+  height: 20px;
+}
+.skeleton:last-child {
+  width: 76%;
+}
+@keyframes loadingSweep {
+  to { background-position: -200% 0; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .skeleton {
+    animation: none;
+  }
 }
 .parkingResult h3 {
   margin: 0;
@@ -359,7 +400,7 @@
 }
 .sourceNote {
   margin: 14px 0 0;
-  font-size: 9px;
+  font-size: 10px;
 }
 .sourceNote a {
   color: inherit;
@@ -369,9 +410,6 @@
 @media (max-width: 480px) {
   .searchPanel {
     padding: 20px 17px;
-  }
-  .panelHeading {
-    gap: 11px;
   }
   .panelHeading h2 {
     font-size: 22px;

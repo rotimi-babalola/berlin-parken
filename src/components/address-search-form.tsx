@@ -48,7 +48,6 @@ export function AddressSearchForm({
   return (
     <>
       <div className={styles.panelHeading}>
-        <span className={styles.step}>01</span>
         <div>
           <h2 id="search-title">Where are you going?</h2>
           <p>Choose a destination in Berlin to see the streets around it.</p>

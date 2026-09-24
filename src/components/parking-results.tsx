@@ -21,7 +21,14 @@ export function ParkingResults({ search, parking, loading }: Props) {
       <section className={styles.parkingResult} aria-labelledby="parking-result-title" aria-live="polite">
         <h3 id="parking-result-title">Mapped street parking</h3>
         <p className={styles.resultAddress}>{search.destination.label} · within {radius}</p>
-        {loading ? <p role="status">Loading nearby parking data…</p> : parking?.status === "unavailable" ? (
+        {loading ? (
+          <div className={styles.loadingState}>
+            <p role="status">Loading nearby parking data…</p>
+            <span className={styles.skeleton} aria-hidden="true" />
+            <span className={styles.skeleton} aria-hidden="true" />
+            <span className={styles.skeleton} aria-hidden="true" />
+          </div>
+        ) : parking?.status === "unavailable" ? (
           <p role="status">Parking data is unavailable. {parking.message}</p>
         ) : parking ? (
           <>
