@@ -73,15 +73,21 @@ export function AddressSearch() {
     setSearchReady({ destination: selected, radiusMeters: radius });
   }
 
-  const liveMessage = suggestionState === "loading"
-    ? "Searching Berlin addresses."
-    : suggestionState === "empty"
-      ? "No Berlin addresses found. Try a street and house number."
-      : suggestionState === "error"
-        ? "Address search is temporarily unavailable."
-        : suggestionState === "ready"
-          ? `${suggestions.length} Berlin addresses found. Use the arrow keys to choose one.`
-          : "";
+  let liveMessage = "";
+  switch (suggestionState) {
+    case "loading":
+      liveMessage = "Searching Berlin addresses.";
+      break;
+    case "empty":
+      liveMessage = "No Berlin addresses found. Try a street and house number.";
+      break;
+    case "error":
+      liveMessage = "Address search is temporarily unavailable.";
+      break;
+    case "ready":
+      liveMessage = `${suggestions.length} Berlin addresses found. Use the arrow keys to choose one.`;
+      break;
+  }
 
   return (
     <section className={styles.searchPanel} aria-labelledby="search-title">
