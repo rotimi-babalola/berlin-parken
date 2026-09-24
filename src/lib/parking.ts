@@ -173,8 +173,9 @@ function validCollection(value: unknown): value is FeatureCollection {
         feature.properties &&
         typeof feature.properties === "object" &&
         (feature.geometry === null ||
-          ((feature.geometry.type === "Polygon" ||
-            feature.geometry.type === "MultiPolygon") &&
+          (typeof feature.geometry === "object" &&
+            (feature.geometry.type === "Polygon" ||
+              feature.geometry.type === "MultiPolygon") &&
             validCoordinates(feature.geometry.coordinates))),
     )
   );
@@ -218,7 +219,6 @@ export async function getNearbyParking(
     BBOX: `${east - radiusMeters},${north - radiusMeters},${east + radiusMeters},${north + radiusMeters},EPSG:25833`,
   });
   let url: URL | null = new URL(`${endpoint}?${params}`);
-  console.log({ url: url.toString() });
   const features: Feature[] = [];
   let totalFeatures: number | undefined;
   let fetchedAt = new Date().toISOString();

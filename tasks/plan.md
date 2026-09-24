@@ -97,11 +97,11 @@ Repository/stack and provider decisions
 - [x] Output reports mapped estimated capacity and usable/conditional/restricted categories without claiming live availability.
 - [x] Empty, partial, malformed, and upstream-error responses produce a clear unavailable/partial-data state rather than fabricated zero capacity.
 
-**Verification:** `pnpm lint`, `pnpm exec tsc --noEmit`, and `git diff --check` passed. The planned live WFS comparison and boundary/no-feature/upstream-failure exercises were not run.
+**Verification:** Added nine focused parking tests for the Berlin projection, bounded EPSG:25833 BBOX, exact radius boundary and outside-radius exclusion, category/street aggregation, successful and capped pagination, unsafe/failed next pages, and empty/malformed/upstream-error responses. `pnpm test` (12 Node tests and 4 Vitest tests), `pnpm lint`, `pnpm exec tsc --noEmit`, and `git diff --check` passed. No live WFS request was made during this test pass.
 
 **Dependencies:** Tasks 1–2
 
-**Files touched:** `src/lib/parking.ts`, `src/app/api/parking/route.ts`, `src/components/address-search.tsx`, and `src/components/address-search.module.css`.
+**Files touched:** `src/lib/parking.ts`, `src/app/api/parking/route.ts`, `src/components/address-search.tsx`, `src/components/address-search.module.css`, and `tests/parking.test.ts`.
 
 **Estimated scope:** Medium: 4–5 files
 
