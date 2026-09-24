@@ -23,6 +23,7 @@ export function useAddressSearch() {
   const [parkingLoading, setParkingLoading] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
   const optionRefs = useRef<Array<HTMLLIElement | null>>([]);
+  const parkingRequest = useRef<AbortController | null>(null);
   const {
     suggestions,
     status: suggestionState,
@@ -35,7 +36,16 @@ export function useAddressSearch() {
       optionRefs.current[activeIndex]?.scrollIntoView({ block: "nearest" });
   }, [activeIndex]);
 
+  useEffect(() => () => parkingRequest.current?.abort(), []);
+
+  function cancelParkingRequest() {
+    parkingRequest.current?.abort();
+    parkingRequest.current = null;
+    setParkingLoading(false);
+  }
+
   function chooseSuggestion(suggestion: AddressSuggestion) {
+    cancelParkingRequest();
     setSelected(suggestion);
     setQuery(suggestion.label);
     setActiveIndex(-1);
@@ -46,6 +56,7 @@ export function useAddressSearch() {
   }
 
   function handleQueryChange(value: string) {
+    cancelParkingRequest();
     setQuery(value);
     setSelected(null);
     setActiveIndex(-1);
@@ -88,6 +99,9 @@ export function useAddressSearch() {
       inputRef.current?.focus();
       return;
     }
+    cancelParkingRequest();
+    const controller = new AbortController();
+    parkingRequest.current = controller;
     setSearchReady({ destination: selected, radiusMeters: radius });
     setParking(null);
     setParkingLoading(true);
@@ -96,13 +110,15 @@ export function useAddressSearch() {
       latitude: String(selected.latitude),
       radius: String(radius),
     });
-    fetch(`/api/parking?${params}`)
+    fetch(`/api/parking?${params}`, { signal: controller.signal })
       .then(async (response) => {
         if (!response.ok)
           throw new Error("Parking data is temporarily unavailable.");
-        setParking((await response.json()) as ParkingSummary);
+        const result = (await response.json()) as ParkingSummary;
+        if (parkingRequest.current === controller) setParking(result);
       })
-      .catch(() =>
+      .catch(() => {
+        if (parkingRequest.current !== controller) return;
         setParking({
           status: "unavailable",
           message: "Parking data is temporarily unavailable.",
@@ -113,9 +129,14 @@ export function useAddressSearch() {
           unknownSpaces: 0,
           featureCount: 0,
           streets: [],
-        }),
-      )
-      .finally(() => setParkingLoading(false));
+        });
+      })
+      .finally(() => {
+        if (parkingRequest.current === controller) {
+          parkingRequest.current = null;
+          setParkingLoading(false);
+        }
+      });
   }
 
   let liveMessage = "";
@@ -153,6 +174,7 @@ export function useAddressSearch() {
     handleKeyDown,
     handleSubmit,
     handleRadiusChange: (value: number) => {
+      cancelParkingRequest();
       setRadius(value);
       setSearchReady(null);
     },

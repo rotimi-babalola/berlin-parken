@@ -1,4 +1,4 @@
-import { cleanup, fireEvent, render, screen } from "@testing-library/react";
+import { act, cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { AddressSearch } from "@/components/address-search";
 import type { AddressSuggestion } from "@/lib/geocoder/types";
@@ -95,5 +95,54 @@ describe("AddressSearch", () => {
     expect(document.activeElement).toBe(input);
     expect(input.getAttribute("aria-invalid")).toBe("true");
     expect(screen.getByText("Select a Berlin address suggestion before continuing.")).toBeTruthy();
+  });
+
+  it("does not replace a newer search result with an older response", async () => {
+    type MockResponse = { ok: boolean; json: () => Promise<unknown> };
+    const newerSuggestion = { ...suggestions[1], label: "Potsdamer Platz 1" };
+    const parkingResponses: Array<(response: MockResponse) => void> = [];
+    vi.stubGlobal("fetch", vi.fn((input: RequestInfo | URL) => {
+      const url = String(input);
+      if (url.startsWith("/api/geocode?")) {
+        const query = new URL(url, "http://localhost").searchParams.get("q");
+        return Promise.resolve({
+          ok: true,
+          json: async () => ({ suggestions: [query === "Alexanderplatz" ? suggestions[0] : newerSuggestion] }),
+        });
+      }
+      return new Promise<MockResponse>((resolve) => parkingResponses.push(resolve));
+    }));
+
+    render(<AddressSearch />);
+    const input = screen.getByRole("combobox", { name: "Destination address" });
+    fireEvent.change(input, { target: { value: "Alexanderplatz" } });
+    fireEvent.click(await screen.findByRole("option", { name: /Alexanderplatz 1/ }));
+    fireEvent.click(screen.getByRole("button", { name: "Check nearby streets" }));
+    await waitFor(() => expect(parkingResponses).toHaveLength(1));
+
+    fireEvent.change(input, { target: { value: "Potsdamer Platz" } });
+    fireEvent.click(await screen.findByRole("option", { name: /Potsdamer Platz 1/ }));
+    fireEvent.click(screen.getByRole("button", { name: "Check nearby streets" }));
+    await waitFor(() => expect(parkingResponses).toHaveLength(2));
+
+    const results = screen.getByRole("region", { name: "Mapped street parking" });
+    await act(async () => {
+      parkingResponses[1]({ ok: true, json: async () => ({
+        status: "available", mappedSpaces: 22, usableSpaces: 22, conditionalSpaces: 0,
+        restrictedSpaces: 0, unknownSpaces: 0, featureCount: 1, streets: [],
+      }) });
+    });
+    expect(within(results).getByText("22", { selector: "p" })).toBeTruthy();
+
+    await act(async () => {
+      parkingResponses[0]({ ok: true, json: async () => ({
+        status: "available", mappedSpaces: 11, usableSpaces: 11, conditionalSpaces: 0,
+        restrictedSpaces: 0, unknownSpaces: 0, featureCount: 1, streets: [],
+      }) });
+    });
+
+    expect(within(results).getByText(/Potsdamer Platz 1/)).toBeTruthy();
+    expect(within(results).getByText("22", { selector: "p" })).toBeTruthy();
+    expect(within(results).queryByText("11", { selector: "p" })).toBeNull();
   });
 });

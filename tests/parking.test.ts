@@ -182,3 +182,16 @@ test("marks malformed feature responses unavailable instead of reporting zero su
   assert.equal(result.status, "unavailable");
   assert.match(result.message ?? "", /invalid response/);
 });
+
+test("rejects malformed coordinate nesting without throwing during radius filtering", async (t) => {
+  t.mock.method(globalThis, "fetch", async () => collection([{
+    type: "Feature",
+    geometry: { type: "Polygon", coordinates: [[391779, 5820072]] },
+    properties: { anzahl_parkplaetze: 10, category: "Parken (ohne Beschränkungen)" },
+  }]));
+
+  const result = await getNearbyParking(13.405, 52.52, 500);
+
+  assert.equal(result.status, "unavailable");
+  assert.match(result.message ?? "", /invalid response/);
+});

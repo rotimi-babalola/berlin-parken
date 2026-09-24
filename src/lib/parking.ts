@@ -172,24 +172,44 @@ function validCollection(value: unknown): value is FeatureCollection {
         feature?.type === "Feature" &&
         feature.properties &&
         typeof feature.properties === "object" &&
-        (feature.geometry === null ||
-          (typeof feature.geometry === "object" &&
-            (feature.geometry.type === "Polygon" ||
-              feature.geometry.type === "MultiPolygon") &&
-            validCoordinates(feature.geometry.coordinates))),
+        typeof feature.geometry === "object" &&
+        feature.geometry !== null &&
+        validGeometry(feature.geometry),
     )
   );
 }
 
-function validCoordinates(value: unknown): boolean {
-  if (!Array.isArray(value)) return false;
-  if (
+function validPosition(value: unknown): value is Position {
+  return (
+    Array.isArray(value) &&
     value.length >= 2 &&
-    typeof value[0] === "number" &&
-    typeof value[1] === "number"
-  )
-    return Number.isFinite(value[0]) && Number.isFinite(value[1]);
-  return value.length > 0 && value.every(validCoordinates);
+    value.every(
+      (coordinate) =>
+        typeof coordinate === "number" && Number.isFinite(coordinate),
+    )
+  );
+}
+
+function validRing(value: unknown): value is Ring {
+  if (!Array.isArray(value) || value.length < 4 || !value.every(validPosition))
+    return false;
+  const first = value[0];
+  const last = value[value.length - 1];
+  return first[0] === last[0] && first[1] === last[1];
+}
+
+function validPolygon(value: unknown): value is Polygon {
+  return Array.isArray(value) && value.length > 0 && value.every(validRing);
+}
+
+function validGeometry(value: Geometry): boolean {
+  if (value.type === "Polygon") return validPolygon(value.coordinates);
+  return (
+    value.type === "MultiPolygon" &&
+    Array.isArray(value.coordinates) &&
+    value.coordinates.length > 0 &&
+    value.coordinates.every(validPolygon)
+  );
 }
 
 export async function getNearbyParking(
