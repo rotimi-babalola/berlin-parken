@@ -27,22 +27,22 @@ Tasks are ordered by dependency. See [plan.md](plan.md) for design choices, deta
 **Description:** Build a Berlin-focused destination form with accessible autocomplete and a 100 m–1 km radius control. Submit only a selected suggestion with valid coordinates.
 
 **Acceptance criteria:**
-- [ ] Suggestions are Berlin-focused and selection stores label and coordinates.
-- [ ] Radius accepts 100–1,000 m and is clearly displayed.
-- [ ] Keyboard operation, changed-query invalidation, and loading/empty/error states work.
+- [x] Suggestions are filtered to Berlin and selection stores label and coordinates.
+- [x] Radius accepts 100–1,000 m and is clearly displayed.
+- [x] Keyboard operation, changed-query invalidation, and loading/empty/error states work.
 
-**Verification:** Run focused UI checks and manually try keyboard selection, no results, changed query, and radius boundaries.
+**Verification:** Passed `pnpm test` (3 provider tests), `pnpm lint`, and `pnpm build`. Browser checks confirmed live Photon suggestions, ArrowDown/Enter selection, enabled submission only after selection, 100 m/1 km radius bounds, stale-selection clearing, empty state, and no horizontal overflow at 320/768/1,024/1,440 px. App and geocode endpoint returned HTTP 200.
 
 **Dependencies:** Task 1
 
-**Files likely touched:** Search page/component, autocomplete, provider adapter, focused checks (target 3–5 files)
+**Files touched:** Next scaffold/config, app page/layout/styles, search form, Photon provider adapter/route/types, provider tests, and README.
 
-**Estimated scope:** Medium (3–5 files)
+**Estimated scope:** Large because the repository had no application scaffold.
 
 ### Checkpoint: After Tasks 1–2
 - [x] Service contracts and provider decisions are documented.
-- [ ] A user can select a Berlin destination and radius.
-- [ ] Stale coordinates cannot be submitted after editing the query.
+- [x] A user can select a Berlin destination and radius.
+- [x] Stale coordinates cannot be submitted after editing the query.
 
 ## Phase 2: Data-backed result slices
 

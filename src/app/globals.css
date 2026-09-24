@@ -1,0 +1,25 @@
+:root {
+  color-scheme: light;
+  --ink: #1e2924;
+  --muted: #69736d;
+  --green: #315d49;
+  --green-dark: #264a39;
+  --paper: #f7f8f4;
+  --line: #e4e8e1;
+}
+
+* { box-sizing: border-box; }
+html, body { min-height: 100%; }
+body {
+  margin: 0;
+  background: var(--paper);
+  color: var(--ink);
+  font-family: Arial, Helvetica, sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+button, input { font: inherit; }
+button:focus-visible, input:focus-visible, a:focus-visible {
+  outline: 3px solid #b47c42;
+  outline-offset: 3px;
+}
+::selection { background: #d9e7dc; color: var(--ink); }

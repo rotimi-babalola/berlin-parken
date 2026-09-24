@@ -6,7 +6,7 @@ Checked against live WFS capabilities, schemas, and bounded GeoJSON queries on 2
 
 - Initial provider: [Photon](https://github.com/komoot/photon), an open-source geocoder built on OpenStreetMap data with search-as-you-type support and bounding-box filtering.
 - Initial endpoint: public demo at `https://photon.komoot.io`. Photon maintainers permit reasonable use but may throttle or ban extensive usage and make no availability guarantees. Use for low-volume v1/prototype traffic only; review usage before public launch.
-- Place Photon-specific URLs, query parameters, response parsing, and IDs behind an app-owned provider adapter. The app-facing interface is `suggest(query, bounds)` and `resolve(providerId)`; normalized results contain a display label, provider ID, and WGS84 coordinates. If Photon requires no separate resolution request for a selected suggestion, the adapter may resolve from the selected normalized suggestion.
+- Place Photon-specific URLs, query parameters, response parsing, and IDs behind an app-owned provider adapter. The app-facing interface is `suggest(query)`; normalized suggestions contain a display label, provider ID, detail, and WGS84 coordinates. The selected result already has the coordinates, so the form needs no provider-specific follow-up request.
 - Bound suggestions to Berlin's extent and validate the selected point against Berlin's boundary before analysis.
 - Attribute OpenStreetMap contributors in the UI and provide the applicable OSM copyright/ODbL notice. Recheck Photon and OSM attribution guidance at implementation time.
 - Replacement options include a managed geocoder or a self-hosted Photon instance; switching providers should require changing the adapter/configuration, not the form or analysis contract.
