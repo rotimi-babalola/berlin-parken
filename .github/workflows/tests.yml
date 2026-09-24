@@ -22,8 +22,6 @@ jobs:
 
       - name: Set up pnpm
         uses: pnpm/action-setup@v4
-        with:
-          version: 10
 
       - name: Set up Node.js
         uses: actions/setup-node@v4
@@ -36,3 +34,12 @@ jobs:
 
       - name: Run tests
         run: pnpm test
+
+      - name: Build application
+        run: pnpm build
+
+      - name: Install Playwright browser
+        run: pnpm exec playwright install --with-deps chromium
+
+      - name: Run browser smoke tests
+        run: pnpm test:e2e
