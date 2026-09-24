@@ -51,15 +51,15 @@ Tasks are ordered by dependency. See [plan.md](plan.md) for design choices, deta
 **Description:** Query the outdoor parking WFS around the selected destination, filter to the true selected radius, classify restrictions, and aggregate mapped estimated capacity.
 
 **Acceptance criteria:**
-- [ ] Spatial query is bounded and paginated; features outside the radius are excluded.
-- [ ] Mapped capacity and restriction classes are reported without implying current occupancy.
-- [ ] Empty, partial, malformed, and failed responses are represented honestly.
+- [x] Spatial query is bounded and paginated; features outside the radius are excluded.
+- [x] Mapped capacity and restriction classes are reported without implying current occupancy.
+- [x] Empty, partial, malformed, and failed responses are represented honestly.
 
-**Verification:** Check projection/radius edges, compare one bounded response with aggregates, and exercise empty and failed responses.
+**Verification:** Added nine focused parking tests for the Berlin projection, bounded EPSG:25833 BBOX, exact radius boundary and outside-radius exclusion, category/street aggregation, successful and capped pagination, unsafe/failed next pages, and empty/malformed/upstream-error responses. `pnpm test` (12 Node tests and 4 Vitest tests), `pnpm lint`, `pnpm exec tsc --noEmit`, and `git diff --check` passed. No live WFS request was made during this test pass.
 
 **Dependencies:** Tasks 1–2
 
-**Files likely touched:** Projection/spatial helper, parking WFS adapter, classifier/aggregator, focused checks (target 3–5 files)
+**Files touched:** `src/lib/parking.ts`, `src/app/api/parking/route.ts`, `src/components/address-search.tsx`, `src/components/address-search.module.css`, and `tests/parking.test.ts`.
 
 **Estimated scope:** Medium (4–5 files)
 

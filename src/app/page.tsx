@@ -16,7 +16,6 @@ export default function Home() {
 
       <div className={styles.content} id="top">
         <section className={styles.intro}>
-          <p className={styles.eyebrow}>PARKING, WITH A LITTLE MORE CLARITY</p>
           <h1>Know the streets<br />before you arrive.</h1>
           <p className={styles.lede}>Explore mapped street parking, paid zones and planned events around your destination.</p>
         </section>
@@ -26,7 +25,6 @@ export default function Home() {
 
           <aside className={styles.context} aria-labelledby="context-title">
             <div className={styles.contextTop}>
-              <span className={styles.contextKicker}>A clearer picture of parking</span>
               <h2 id="context-title">Know what’s nearby.</h2>
               <p>Official Berlin data can show parking infrastructure and street restrictions. It can’t tell us which spaces are free right now.</p>
             </div>

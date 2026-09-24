@@ -71,13 +71,6 @@
 .intro {
   max-width: 670px;
 }
-.eyebrow {
-  margin: 0 0 20px;
-  color: #66756b;
-  font-size: 10px;
-  font-weight: 700;
-  letter-spacing: 1.7px;
-}
 .intro h1 {
   margin: 0;
   font-family: Georgia, "Times New Roman", serif;
@@ -108,11 +101,6 @@
 }
 .contextTop {
   padding: 27px 27px 23px;
-}
-.contextKicker {
-  color: var(--muted);
-  font-size: 11px;
-  font-weight: 600;
 }
 .contextTop h2 {
   margin: 13px 0 10px;

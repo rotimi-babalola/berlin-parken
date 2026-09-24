@@ -42,7 +42,7 @@ Repository/stack and provider decisions
 - [ ] Checkpoint: Address resolves to a Berlin coordinate and radius survives submission
 
 ### Phase 2: Data-backed result slices
-- [ ] Task 3: Show nearby street-parking supply and restrictions
+- [x] Task 3: Show nearby street-parking supply and restrictions
 - [ ] Task 4: Show parking-zone status and planned events
 - [ ] Task 5: Present explainable parking guidance and nearby street candidates
 - [ ] Checkpoint: A Berlin address produces a complete result with source limitations visible
@@ -93,15 +93,15 @@ Repository/stack and provider decisions
 **Description:** From the selected destination and radius, query the outdoor parking WFS layer using EPSG:25833 spatial bounds, paginate within documented limits, apply a true radius filter, classify returned categories, and aggregate estimated mapped capacity by usability and nearby street. Keep unknown or conditional categories visible as such.
 
 **Acceptance criteria:**
-- [ ] Queries are spatially bounded, paginated safely, and results outside the selected radius are excluded.
-- [ ] Output reports mapped estimated capacity and usable/conditional/restricted categories without claiming live availability.
-- [ ] Empty, partial, malformed, and upstream-error responses produce a clear unavailable/partial-data state rather than fabricated zero capacity.
+- [x] Queries are spatially bounded, paginated safely, and results outside the selected radius are excluded.
+- [x] Output reports mapped estimated capacity and usable/conditional/restricted categories without claiming live availability.
+- [x] Empty, partial, malformed, and upstream-error responses produce a clear unavailable/partial-data state rather than fabricated zero capacity.
 
-**Verification:** Exercise projection and radius boundaries against known coordinates; compare aggregates with a small official WFS response and verify a no-feature area and WFS failure.
+**Verification:** Added nine focused parking tests for the Berlin projection, bounded EPSG:25833 BBOX, exact radius boundary and outside-radius exclusion, category/street aggregation, successful and capped pagination, unsafe/failed next pages, and empty/malformed/upstream-error responses. `pnpm test` (12 Node tests and 4 Vitest tests), `pnpm lint`, `pnpm exec tsc --noEmit`, and `git diff --check` passed. No live WFS request was made during this test pass.
 
 **Dependencies:** Tasks 1–2
 
-**Files likely touched:** projection/spatial helper, parking WFS adapter, classifier/aggregator, focused checks (target 3–5 files)
+**Files touched:** `src/lib/parking.ts`, `src/app/api/parking/route.ts`, `src/components/address-search.tsx`, `src/components/address-search.module.css`, and `tests/parking.test.ts`.
 
 **Estimated scope:** Medium: 4–5 files
 

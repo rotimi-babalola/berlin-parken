@@ -52,7 +52,7 @@ export function useAddressSuggestions(query: string, enabled: boolean) {
   const currentResult = enabled && result?.query === normalizedQuery && result.attempt === attempt
     ? result
     : null;
-  const status = !enabled || normalizedQuery.length < 3
+  const status: "idle" | "loading" | "empty" | "error" | "ready" = !enabled || normalizedQuery.length < 3
     ? "idle"
     : currentResult?.status ?? "loading";
 
