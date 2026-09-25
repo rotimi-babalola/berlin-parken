@@ -2,21 +2,23 @@
 
 import { useState } from "react";
 import type { PlannedEvent } from "@/lib/parking-context";
+import { useLocale } from "@/lib/i18n";
 import styles from "./address-search.module.css";
 
 const EVENTS_PER_PAGE = 5;
 
 // Dumb: one event row.
 function EventItem({ event }: { event: PlannedEvent }) {
+  const { t } = useLocale();
   return (
     <li>
-      <strong>{event.type ?? "Planned event"}</strong>
+      <strong>{event.type ?? t("events.defaultType")}</strong>
       {event.street ? ` · ${event.street}` : ""}
-      {event.borough ? `, ${event.borough}` : ""} · {event.distanceMeters} m
-      away
+      {event.borough ? `, ${event.borough}` : ""}
+      {t("events.away", { distance: event.distanceMeters })}
       {event.startsOn || event.endsOn ? (
         <div>
-          {event.startsOn ?? "Date unknown"}
+          {event.startsOn ?? t("events.dateUnknown")}
           {event.endsOn ? ` – ${event.endsOn}` : ""}
           {event.startTime ? ` · ${event.startTime}` : ""}
           {event.endTime ? `–${event.endTime}` : ""}
@@ -30,6 +32,7 @@ function EventItem({ event }: { event: PlannedEvent }) {
 // Dumb: paged event list — 5 per view, prev/next to see more.
 // Page index is local UI state; it resets whenever a new result arrives.
 export function EventCarousel({ items }: { items: PlannedEvent[] }) {
+  const { t } = useLocale();
   const [page, setPage] = useState(0);
   const [prevItems, setPrevItems] = useState(items);
   if (prevItems !== items) {
@@ -54,22 +57,26 @@ export function EventCarousel({ items }: { items: PlannedEvent[] }) {
             type="button"
             className={styles.carouselButton}
             disabled={current === 0}
-            aria-label="Show previous events"
+            aria-label={t("events.prevAria")}
             onClick={() => setPage((p) => Math.max(0, p - 1))}
           >
-            ← Prev
+            {t("events.prev")}
           </button>
           <span role="status" className={styles.carouselStatus}>
-            {start + 1}–{start + visible.length} of {items.length}
+            {t("events.count", {
+              from: start + 1,
+              to: start + visible.length,
+              total: items.length,
+            })}
           </span>
           <button
             type="button"
             className={styles.carouselButton}
             disabled={current === pageCount - 1}
-            aria-label="Show next events"
+            aria-label={t("events.nextAria")}
             onClick={() => setPage((p) => Math.min(pageCount - 1, p + 1))}
           >
-            Next →
+            {t("events.next")}
           </button>
         </div>
       )}

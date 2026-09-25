@@ -3,6 +3,7 @@
 import { useId } from "react";
 import type { KeyboardEvent, RefObject, SubmitEvent } from "react";
 import type { AddressSuggestion } from "@/lib/geocoder/types";
+import { useLocale } from "@/lib/i18n";
 import styles from "./address-search.module.css";
 
 type Props = {
@@ -44,20 +45,21 @@ export function AddressSearchForm({
 }: Props) {
   const inputId = useId();
   const listId = useId();
+  const { t } = useLocale();
 
   return (
     <>
       <div className={styles.panelHeading}>
         <div>
-          <h2 id="search-title">Where are you going?</h2>
-          <p>Choose a destination in Berlin to see the streets around it.</p>
+          <h2 id="search-title">{t("search.title")}</h2>
+          <p>{t("search.subtitle")}</p>
         </div>
       </div>
 
       <form className={styles.form} onSubmit={onSubmit}>
         <div className={styles.field}>
           <label className={styles.label} htmlFor={inputId}>
-            Destination address
+            {t("search.addressLabel")}
           </label>
           <div className={styles.inputWrap}>
             <svg
@@ -88,7 +90,7 @@ export function AddressSearchForm({
               autoComplete="off"
               maxLength={120}
               value={query}
-              placeholder="e.g. Invalidenstraße 117"
+              placeholder={t("search.placeholder")}
               aria-autocomplete="list"
               aria-controls={listId}
               aria-expanded={suggestions.length > 0}
@@ -106,7 +108,7 @@ export function AddressSearchForm({
             {selected && (
               <span
                 className={styles.selectedMark}
-                aria-label="Address selected"
+                aria-label={t("search.selectedLabel")}
               >
                 ✓
               </span>
@@ -116,7 +118,7 @@ export function AddressSearchForm({
                 className={styles.suggestions}
                 id={listId}
                 role="listbox"
-                aria-label="Berlin address suggestions"
+                aria-label={t("search.suggestionsLabel")}
               >
                 {suggestions.map((suggestion, index) => (
                   <li
@@ -148,8 +150,7 @@ export function AddressSearchForm({
             )}
           </div>
           <span className={styles.hint} id={`${inputId}-hint`}>
-            Enter at least 3 characters, then select a suggestion to confirm the
-            location.
+            {t("search.hint")}
           </span>
           <span
             className={styles.liveStatus}
@@ -160,22 +161,20 @@ export function AddressSearchForm({
           </span>
           {suggestionState === "error" && (
             <button className={styles.retry} type="button" onClick={onRetry}>
-              Try again
+              {t("search.retry")}
             </button>
           )}
           {submitError && (
             <span className={styles.errorStatus} id={`${inputId}-validation`}>
-              Select a Berlin address suggestion before continuing.
+              {t("search.submitError")}
             </span>
           )}
         </div>
 
         <fieldset className={styles.radiusField}>
-          <legend className={styles.label}>
-            How far are you willing to walk?
-          </legend>
+          <legend className={styles.label}>{t("search.radiusLegend")}</legend>
           <div className={styles.radiusValue}>
-            <span>Search radius</span>
+            <span>{t("search.radiusLabel")}</span>
             <output htmlFor={`${inputId}-radius`} aria-live="off">
               {radius < 1000 ? `${radius} m` : "1 km"}
             </output>
@@ -197,18 +196,19 @@ export function AddressSearchForm({
         </fieldset>
 
         <button className={styles.submit} type="submit">
-          Check nearby streets<span aria-hidden="true">→</span>
+          {t("search.submit")}
+          <span aria-hidden="true">→</span>
         </button>
       </form>
 
       <p className={styles.attribution}>
-        Suggestions by Photon · ©{" "}
+        {t("search.attributionPrefix")}{" "}
         <a
           href="https://www.openstreetmap.org/copyright"
           target="_blank"
           rel="noreferrer"
         >
-          OpenStreetMap contributors
+          {t("search.attributionLink")}
         </a>
       </p>
     </>

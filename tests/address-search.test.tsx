@@ -9,6 +9,8 @@ import {
 } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { AddressSearch } from "@/components/address-search";
+import { LanguageSwitcher } from "@/components/language-switcher";
+import { LocaleProvider } from "@/lib/i18n";
 import type { AddressSuggestion } from "@/lib/geocoder/types";
 
 const suggestions: AddressSuggestion[] = Array.from(
@@ -236,6 +238,27 @@ describe("AddressSearch", () => {
     expect(
       screen.getByText("Select a Berlin address suggestion before continuing."),
     ).toBeTruthy();
+  });
+
+  it("switches the UI to German and persists the choice", async () => {
+    window.localStorage.clear();
+    render(
+      <LocaleProvider>
+        <LanguageSwitcher />
+        <AddressSearch />
+      </LocaleProvider>,
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "DE" }));
+
+    expect(await screen.findByText("Wohin geht’s?")).toBeTruthy();
+    expect(
+      screen.queryByRole("button", { name: "Check nearby streets" }),
+    ).toBeNull();
+    expect(
+      screen.getByRole("button", { name: "Straßen in der Nähe prüfen" }),
+    ).toBeTruthy();
+    expect(window.localStorage.getItem("berlin-parken-locale")).toBe("de");
   });
 
   it("does not replace a newer search result with an older response", async () => {

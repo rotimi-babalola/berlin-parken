@@ -1,4 +1,5 @@
 import type { ParkingSummary } from "@/lib/parking";
+import { useLocale } from "@/lib/i18n";
 import styles from "./address-search.module.css";
 
 const ROMAN = ["I.", "II.", "III."];
@@ -10,19 +11,17 @@ export function StreetRanking({
 }: {
   streets: ParkingSummary["streets"];
 }) {
+  const { t } = useLocale();
   if (!streets.length)
     return (
       <div className={styles.streetList}>
-        <strong>Nearby streets</strong>
-        <p>
-          No eligible street candidates in this radius — nearby areas are all
-          restricted or unmapped.
-        </p>
+        <strong>{t("streets.title")}</strong>
+        <p>{t("streets.empty")}</p>
       </div>
     );
   return (
     <div className={styles.streetList}>
-      <strong>Nearby streets</strong>
+      <strong>{t("streets.title")}</strong>
       {streets.slice(0, 3).map((street, index) => (
         <p key={street.name}>
           <span className={styles.rank} aria-hidden="true">
@@ -31,9 +30,10 @@ export function StreetRanking({
           <span>
             {street.name}
             <span className={styles.streetMeta}>
-              {" "}
-              · {street.mappedSpaces.toLocaleString()} mapped ·{" "}
-              {street.nearestMeters} m away (straight line)
+              {t("streets.meta", {
+                spaces: street.mappedSpaces.toLocaleString(),
+                distance: street.nearestMeters,
+              })}
             </span>
           </span>
           <span className={styles.streetCount}>
@@ -41,10 +41,7 @@ export function StreetRanking({
           </span>
         </p>
       ))}
-      <p className={styles.sourceNote}>
-        Best and backup areas are distinct nearby streets, excluding
-        restricted/prohibited areas.
-      </p>
+      <p className={styles.sourceNote}>{t("streets.note")}</p>
     </div>
   );
 }

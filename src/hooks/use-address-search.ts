@@ -8,6 +8,7 @@ import {
   ensureParkingContext,
   type ParkingContext,
 } from "@/lib/parking-context";
+import { useLocale } from "@/lib/i18n";
 import { useAddressSuggestions } from "./use-address-suggestions";
 
 export type SearchReady = {
@@ -18,6 +19,7 @@ export type SearchReady = {
 export type ParkingResult = ParkingSummary & ParkingContext;
 
 export function useAddressSearch() {
+  const { t } = useLocale();
   const [query, setQuery] = useState("");
   const [selected, setSelected] = useState<AddressSuggestion | null>(null);
   const [radius, setRadius] = useState(500);
@@ -118,8 +120,7 @@ export function useAddressSearch() {
     });
     fetch(`/api/parking?${params}`, { signal: controller.signal })
       .then(async (response) => {
-        if (!response.ok)
-          throw new Error("Parking data is temporarily unavailable.");
+        if (!response.ok) throw new Error(t("search.parkingUnavailable"));
         const result = (await response.json()) as ParkingSummary &
           Partial<ParkingContext>;
         if (parkingRequest.current === controller)
@@ -134,7 +135,7 @@ export function useAddressSearch() {
         if (parkingRequest.current !== controller) return;
         setParking({
           status: "unavailable",
-          message: "Parking data is temporarily unavailable.",
+          message: t("search.parkingUnavailable"),
           mappedSpaces: 0,
           usableSpaces: 0,
           conditionalSpaces: 0,
@@ -145,14 +146,14 @@ export function useAddressSearch() {
           zones: {
             source: {
               status: "unavailable",
-              message: "Parking-zone data is temporarily unavailable.",
+              message: t("search.zoneUnavailable"),
             },
             items: [],
           },
           events: {
             source: {
               status: "unavailable",
-              message: "Planned-event data is temporarily unavailable.",
+              message: t("search.eventUnavailable"),
             },
             items: [],
           },
@@ -169,16 +170,16 @@ export function useAddressSearch() {
   let liveMessage = "";
   switch (suggestionState) {
     case "loading":
-      liveMessage = "Searching Berlin addresses.";
+      liveMessage = t("search.suggestLoading");
       break;
     case "empty":
-      liveMessage = "No Berlin addresses found. Try a street and house number.";
+      liveMessage = t("search.suggestEmpty");
       break;
     case "error":
-      liveMessage = "Address search is temporarily unavailable.";
+      liveMessage = t("search.suggestError");
       break;
     case "ready":
-      liveMessage = `${suggestions.length} Berlin addresses found. Use the arrow keys to choose one.`;
+      liveMessage = t("search.suggestReady", { count: suggestions.length });
       break;
   }
 

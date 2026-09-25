@@ -1,4 +1,5 @@
 import { assessSupply } from "@/lib/assessment";
+import { useLocale } from "@/lib/i18n";
 import styles from "./address-search.module.css";
 
 // Dumb: estimate label + segmented level bar (from mockup B, Bescheid palette).
@@ -13,15 +14,27 @@ export function AssessmentCard({
   conditional: number;
   restricted: number;
 }) {
+  const { t } = useLocale();
   const assessment = assessSupply(mappedSpaces);
+  const label = t(
+    assessment.step === 1
+      ? "assessment.scarce"
+      : assessment.step === 2
+        ? "assessment.moderate"
+        : "assessment.ample",
+  );
   return (
     <div className={styles.assessment}>
-      <span className={styles.eyebrow}>Estimate · mapped supply</span>
-      <div className={styles.assessmentLabel}>{assessment.label}</div>
+      <span className={styles.eyebrow}>{t("assessment.eyebrow")}</span>
+      <div className={styles.assessmentLabel}>{label}</div>
       <div
         className={styles.levelBar}
         role="img"
-        aria-label={`Supply estimate ${assessment.label}, level ${assessment.step} of ${assessment.totalSteps}`}
+        aria-label={t("assessment.aria", {
+          label,
+          step: assessment.step,
+          total: assessment.totalSteps,
+        })}
       >
         {Array.from({ length: assessment.totalSteps }, (_, index) => (
           <span
@@ -33,10 +46,11 @@ export function AssessmentCard({
         ))}
       </div>
       <p className={styles.assessmentNote}>
-        Estimate from mapped supply — not live occupancy. Unrestricted{" "}
-        {usable.toLocaleString()} · conditional {conditional.toLocaleString()} ·
-        restricted {restricted.toLocaleString()}. Documented bands: &lt;400
-        scarce · 400–1200 moderate · &gt;1200 ample.
+        {t("assessment.note", {
+          usable: usable.toLocaleString(),
+          conditional: conditional.toLocaleString(),
+          restricted: restricted.toLocaleString(),
+        })}
       </p>
     </div>
   );
