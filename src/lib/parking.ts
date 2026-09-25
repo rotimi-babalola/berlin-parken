@@ -1,3 +1,5 @@
+import { fetchWfsFeatures, wfsParams } from "./wfs.ts";
+
 export type ParkingUsability =
   | "usable"
   | "conditional"
@@ -17,10 +19,10 @@ export type ParkingSummary = {
   streets: Array<{ name: string; mappedSpaces: number; features: number }>;
 };
 
-type Position = [number, number];
+export type Position = [number, number];
 type Ring = Position[];
 type Polygon = Ring[];
-type Geometry = {
+export type Geometry = {
   type: "Polygon" | "MultiPolygon";
   coordinates: Polygon | Polygon[];
 };
@@ -38,8 +40,6 @@ type FeatureCollection = {
 };
 
 const endpoint = "https://gdi.berlin.de/services/wfs/parkplaetze";
-const maxPages = 5;
-const pageSize = 500;
 
 export function toEpsg25833(longitude: number, latitude: number): Position {
   const a = 6378137;
@@ -124,7 +124,7 @@ function ringDistance(point: Position, ring: Ring): number {
   return distance;
 }
 
-function geometryDistance(point: Position, geometry: Geometry): number {
+export function geometryDistance(point: Position, geometry: Geometry): number {
   const polygons =
     geometry.type === "Polygon"
       ? [geometry.coordinates as Polygon]
@@ -229,54 +229,19 @@ export async function getNearbyParking(
     streets: [],
   });
   const [east, north] = toEpsg25833(longitude, latitude);
-  const params = new URLSearchParams({
-    SERVICE: "WFS",
-    VERSION: "2.0.0",
-    REQUEST: "GetFeature",
-    TYPENAMES: "parkplaetze:parkplaetze_aussen",
-    COUNT: String(pageSize),
-    OUTPUTFORMAT: "application/json",
-    BBOX: `${east - radiusMeters},${north - radiusMeters},${east + radiusMeters},${north + radiusMeters},EPSG:25833`,
-  });
-  let url: URL | null = new URL(`${endpoint}?${params}`);
-  const features: Feature[] = [];
-  let totalFeatures: number | undefined;
-  let fetchedAt = new Date().toISOString();
-  try {
-    for (let page = 0; page < maxPages && url; page++) {
-      const response = await fetch(url, {
-        signal: AbortSignal.timeout(8000),
-        cache: "no-store",
-      });
-      if (!response.ok)
-        throw new Error("Parking data service returned an error.");
-      const raw: unknown = await response.json();
-      if (!validCollection(raw))
-        throw new Error("Parking data service returned an invalid response.");
-      totalFeatures =
-        typeof raw.totalFeatures === "number"
-          ? raw.totalFeatures
-          : totalFeatures;
-      fetchedAt =
-        typeof (raw as FeatureCollection & { timeStamp?: string }).timeStamp ===
-        "string"
-          ? (raw as FeatureCollection & { timeStamp: string }).timeStamp
-          : fetchedAt;
-      features.push(...raw.features);
-      const next = raw.links?.find((link) => link.rel === "next")?.href;
-      if (!next) {
-        url = null;
-        break;
-      }
-      const nextUrl = new URL(next, endpoint);
-      if (
-        nextUrl.origin !== new URL(endpoint).origin ||
-        nextUrl.pathname !== new URL(endpoint).pathname
-      )
-        throw new Error("Parking data service returned an invalid page link.");
-      url = nextUrl;
-    }
-  } catch (error) {
+  const params = wfsParams(
+    "parkplaetze:parkplaetze_aussen",
+    east,
+    north,
+    radiusMeters,
+  );
+  const fetched = await fetchWfsFeatures<Feature>(
+    endpoint,
+    params,
+    validCollection,
+  );
+  const { features, fetchedAt } = fetched;
+  if ("failed" in fetched) {
     return features.length
       ? summarize(
           features,
@@ -284,26 +249,18 @@ export async function getNearbyParking(
           radiusMeters,
           fetchedAt,
           true,
-          error instanceof Error
-            ? error.message
-            : "Parking data is incomplete.",
+          fetched.failed,
         )
-      : unavailable(
-          error instanceof Error
-            ? error.message
-            : "Parking data is temporarily unavailable.",
-        );
+      : unavailable(fetched.failed);
   }
 
-  const budgetReached =
-    !!url || (totalFeatures !== undefined && features.length < totalFeatures);
   return summarize(
     features,
     [east, north],
     radiusMeters,
     fetchedAt,
-    budgetReached,
-    budgetReached
+    fetched.incomplete,
+    fetched.incomplete
       ? "Some nearby records may be missing because the service page limit was reached."
       : undefined,
   );
