@@ -1,8 +1,6 @@
 import { AddressSearch } from "@/components/address-search";
 import styles from "./page.module.css";
 
-const dataSources = ["Street parking", "Parking zones", "Road events"];
-
 export default function Home() {
   return (
     <main className={styles.page}>
@@ -20,29 +18,7 @@ export default function Home() {
           <p className={styles.lede}>Explore mapped street parking, paid zones and planned events around your destination.</p>
         </section>
 
-        <div className={styles.workspace}>
-          <AddressSearch />
-
-          <aside className={styles.context} aria-labelledby="context-title">
-            <div className={styles.contextTop}>
-              <h2 id="context-title">Know what’s nearby.</h2>
-              <p>Official Berlin data can show parking infrastructure and street restrictions. It can’t tell us which spaces are free right now.</p>
-            </div>
-
-            <div className={styles.sourceList}>
-              <span className={styles.sourceHeading}>WHAT WE LOOK AT</span>
-              {dataSources.map((source, index) => (
-                <div className={styles.sourceRow} key={source}>
-                  <span className={styles.sourceIndex}>0{index + 1}</span>
-                  <span>{source}</span>
-                  <span className={styles.sourceArrow} aria-hidden="true">↗</span>
-                </div>
-              ))}
-            </div>
-
-            <p className={styles.contextFoot}>Built around Berlin’s open geodata<span aria-hidden="true"> · </span>Updated as source data allows</p>
-          </aside>
-        </div>
+        <AddressSearch />
 
         <footer className={styles.footer}>
           <span>Designed for getting there, not circling the block.</span>
