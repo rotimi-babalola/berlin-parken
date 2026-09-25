@@ -13,7 +13,12 @@ export type ParkingSummary = {
   restrictedSpaces: number;
   unknownSpaces: number;
   featureCount: number;
-  streets: Array<{ name: string; mappedSpaces: number; features: number }>;
+  streets: Array<{
+    name: string;
+    mappedSpaces: number;
+    features: number;
+    nearestMeters: number;
+  }>;
 };
 
 export type Position = [number, number];
@@ -288,7 +293,10 @@ function summarize(
     featureCount: features.length,
     streets: [],
   };
-  const streets = new Map<string, { mappedSpaces: number; features: number }>();
+  const streets = new Map<
+    string,
+    { mappedSpaces: number; features: number; nearestMeters: number }
+  >();
   for (const feature of features) {
     const properties = feature.properties;
     const spaces = Number(properties.anzahl_parkplaetze);
@@ -302,11 +310,20 @@ function summarize(
     else if (usability === "conditional") result.conditionalSpaces += capacity;
     else if (usability === "restricted") result.restrictedSpaces += capacity;
     else result.unknownSpaces += capacity;
+    // ponytail: candidates skip restricted (incl. Parkverbot) features;
+    // revisit if per-street usability mix needs ranking weight.
+    if (usability === "restricted") continue;
     const name = String(properties.strassenname ?? "").trim();
-    if (name) {
-      const street = streets.get(name) ?? { mappedSpaces: 0, features: 0 };
+    if (name && feature.geometry) {
+      const rounded = Math.round(geometryDistance(point, feature.geometry));
+      const street = streets.get(name) ?? {
+        mappedSpaces: 0,
+        features: 0,
+        nearestMeters: rounded,
+      };
       street.mappedSpaces += capacity;
       street.features++;
+      street.nearestMeters = Math.min(street.nearestMeters, rounded);
       streets.set(name, street);
     }
   }

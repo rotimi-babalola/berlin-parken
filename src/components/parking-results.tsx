@@ -1,5 +1,6 @@
 import type { ParkingSummary } from "@/lib/parking";
 import type { ParkingContext } from "@/lib/parking-context";
+import { useLocale } from "@/lib/i18n";
 import type { SearchReady } from "../hooks/use-address-search";
 import { AssessmentCard } from "./assessment-card";
 import { StreetRanking } from "./street-ranking";
@@ -18,6 +19,7 @@ type Props = {
 // Stateful data lives in useAddressSearch; this file only renders props.
 // Zones/events render in the side rail via ZoneSection/EventSection.
 export function ParkingResults({ search, parking, loading }: Props) {
+  const { t } = useLocale();
   if (!search) return null;
   const radius =
     search.radiusMeters < 1000 ? `${search.radiusMeters} m` : "1 km";
@@ -29,9 +31,9 @@ export function ParkingResults({ search, parking, loading }: Props) {
           ✓
         </span>
         <span>
-          <strong>Search area set</strong>
+          <strong>{t("results.ready")}</strong>
           <br />
-          {search.destination.label} · within {radius}
+          {search.destination.label} · {t("results.within", { radius })}
         </span>
       </div>
       <section
@@ -39,38 +41,42 @@ export function ParkingResults({ search, parking, loading }: Props) {
         aria-labelledby="parking-result-title"
         aria-live="polite"
       >
-        <h3 id="parking-result-title">Mapped street parking</h3>
+        <h3 id="parking-result-title">{t("results.title")}</h3>
         <p className={styles.resultAddress}>
-          {search.destination.label} · within {radius}
+          {search.destination.label} · {t("results.within", { radius })}
         </p>
         {loading ? (
           <div className={styles.loadingState}>
-            <p role="status">Loading nearby parking data…</p>
+            <p role="status">{t("results.loading")}</p>
             <span className={styles.skeleton} aria-hidden="true" />
             <span className={styles.skeleton} aria-hidden="true" />
             <span className={styles.skeleton} aria-hidden="true" />
           </div>
         ) : parking?.status === "unavailable" ? (
-          <p role="status">Parking data is unavailable. {parking.message}</p>
+          <p role="status">
+            {t("results.unavailablePrefix")} {parking.message}
+          </p>
         ) : parking ? (
           <>
             {parking.status === "empty" ? (
-              <p>No mapped parking areas were returned for this radius.</p>
+              <p>{t("results.empty")}</p>
             ) : (
               <div className={styles.report}>
                 <div className={styles.reportMain}>
                   <p className={styles.capacity}>
                     {parking.mappedSpaces.toLocaleString()}{" "}
                     <span>
-                      mapped spaces across {parking.featureCount} nearby areas
+                      {t("results.capacitySuffix", {
+                        count: parking.featureCount,
+                      })}
                     </span>
                   </p>
                   <SupplyTable
                     rows={[
-                      ["Unrestricted", parking.usableSpaces],
-                      ["Conditional", parking.conditionalSpaces],
-                      ["Restricted", parking.restrictedSpaces],
-                      ["Unknown category", parking.unknownSpaces],
+                      [t("supply.unrestricted"), parking.usableSpaces],
+                      [t("supply.conditional"), parking.conditionalSpaces],
+                      [t("supply.restricted"), parking.restrictedSpaces],
+                      [t("supply.unknown"), parking.unknownSpaces],
                     ]}
                   />
                   <StreetRanking streets={parking.streets} />
@@ -87,10 +93,12 @@ export function ParkingResults({ search, parking, loading }: Props) {
               </div>
             )}
             {parking.status === "partial" && (
-              <p role="status">Partial results: {parking.message}</p>
+              <p role="status">
+                {t("results.partialPrefix")} {parking.message}
+              </p>
             )}
             <p className={styles.sourceNote}>
-              Mapped capacity and restrictions from{" "}
+              {t("results.sourceNote")}{" "}
               <a
                 href="https://daten.berlin.de/datensaetze/parken-im-strassenraum-wfs-2eb40df3"
                 target="_blank"
@@ -98,9 +106,10 @@ export function ParkingResults({ search, parking, loading }: Props) {
               >
                 Berlin Open Data
               </a>
-              . This inventory is not live availability.
               {parking.fetchedAt
-                ? ` Retrieved ${new Date(parking.fetchedAt).toLocaleString()}.`
+                ? ` ${t("results.retrieved", {
+                    date: new Date(parking.fetchedAt).toLocaleString(),
+                  })}`
                 : ""}
             </p>
           </>

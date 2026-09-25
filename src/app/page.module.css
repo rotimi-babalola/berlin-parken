@@ -63,6 +63,28 @@
   border-radius: 50%;
   background: var(--vermilion);
 }
+.localeSwitch {
+  display: inline-flex;
+  gap: 4px;
+  margin-left: 12px;
+}
+.localeButton,
+.localeActive {
+  border: 1px solid var(--line);
+  background: transparent;
+  color: var(--muted);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 1px;
+  padding: 3px 8px;
+  border-radius: 999px;
+  cursor: pointer;
+}
+.localeActive {
+  background: var(--ink);
+  border-color: var(--ink);
+  color: #f4efe3;
+}
 .content {
   max-width: 1216px;
   margin: 0 auto;

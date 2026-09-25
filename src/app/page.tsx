@@ -1,7 +1,12 @@
+"use client";
+
 import { AddressSearch } from "@/components/address-search";
+import { LanguageSwitcher } from "@/components/language-switcher";
+import { useLocale } from "@/lib/i18n";
 import styles from "./page.module.css";
 
 export default function Home() {
+  const { t } = useLocale();
   return (
     <main className={styles.page}>
       <header className={styles.header}>
@@ -16,28 +21,26 @@ export default function Home() {
           </span>
         </a>
         <span className={styles.headerNote}>
-          <span className={styles.liveDot} /> BERLIN, GERMANY
+          <span className={styles.liveDot} /> {t("header.location")}
+          <LanguageSwitcher />
         </span>
       </header>
 
       <div className={styles.content} id="top">
         <section className={styles.intro}>
           <h1>
-            Know the streets
+            {t("intro.titleA")}
             <br />
-            before you arrive.
+            {t("intro.titleB")}
           </h1>
-          <p className={styles.lede}>
-            Explore mapped street parking, paid zones and planned events around
-            your destination.
-          </p>
+          <p className={styles.lede}>{t("intro.lede")}</p>
         </section>
 
         <AddressSearch />
 
         <footer className={styles.footer}>
-          <span>Designed for getting there, not circling the block.</span>
-          <span>Data guidance only · Always follow local signs</span>
+          <span>{t("footer.tagline")}</span>
+          <span>{t("footer.notice")}</span>
         </footer>
       </div>
     </main>

@@ -149,7 +149,34 @@ test("aggregates mapped capacity by usability and street, preserving unknown cat
     name: "Same Street",
     mappedSpaces: 14,
     features: 2,
+    nearestMeters: 0,
   });
+  assert.ok(
+    result.streets.every(({ name }) => name !== "Restricted Road"),
+    "restricted/prohibited streets are excluded from candidates",
+  );
+});
+
+test("excludes prohibited features from street candidates but keeps them in supply totals", async (t) => {
+  t.mock.method(globalThis, "fetch", async () =>
+    collection(
+      [
+        feature("ok", 0, 0, 10, "Parken (ohne Beschränkungen)", "Good Street"),
+        feature("banned", 20, 0, 30, "Parkverbot", "Banned Street"),
+      ],
+      { totalFeatures: 2 },
+    ),
+  );
+
+  const result = await getNearbyParking(13.405, 52.52, 100);
+
+  assert.equal(result.mappedSpaces, 40);
+  assert.equal(result.restrictedSpaces, 30);
+  assert.deepEqual(
+    result.streets.map(({ name }) => name),
+    ["Good Street"],
+  );
+  assert.equal(result.streets[0].nearestMeters, 0);
 });
 
 test("distinguishes a successful empty response from an upstream failure", async (t) => {

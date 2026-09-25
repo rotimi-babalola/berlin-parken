@@ -9,6 +9,8 @@ import {
 } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { AddressSearch } from "@/components/address-search";
+import { LanguageSwitcher } from "@/components/language-switcher";
+import { LocaleProvider } from "@/lib/i18n";
 import type { AddressSuggestion } from "@/lib/geocoder/types";
 
 const suggestions: AddressSuggestion[] = Array.from(
@@ -78,9 +80,24 @@ describe("AddressSearch", () => {
       unknownSpaces: 20,
       featureCount: 12,
       streets: [
-        { name: "Torstraße", mappedSpaces: 420, features: 5 },
-        { name: "Linienstraße", mappedSpaces: 310, features: 4 },
-        { name: "Gormannstraße", mappedSpaces: 190, features: 3 },
+        {
+          name: "Torstraße",
+          mappedSpaces: 420,
+          features: 5,
+          nearestMeters: 120,
+        },
+        {
+          name: "Linienstraße",
+          mappedSpaces: 310,
+          features: 4,
+          nearestMeters: 200,
+        },
+        {
+          name: "Gormannstraße",
+          mappedSpaces: 190,
+          features: 3,
+          nearestMeters: 340,
+        },
       ],
     });
 
@@ -96,6 +113,7 @@ describe("AddressSearch", () => {
     for (const street of ["Torstraße", "Linienstraße", "Gormannstraße"]) {
       expect(within(results).getByText(street)).toBeTruthy();
     }
+    expect(within(results).getByText(/120 m away/)).toBeTruthy();
   });
 
   it("pages through more than five events with the carousel controls", async () => {
@@ -220,6 +238,27 @@ describe("AddressSearch", () => {
     expect(
       screen.getByText("Select a Berlin address suggestion before continuing."),
     ).toBeTruthy();
+  });
+
+  it("switches the UI to German and persists the choice", async () => {
+    window.localStorage.clear();
+    render(
+      <LocaleProvider>
+        <LanguageSwitcher />
+        <AddressSearch />
+      </LocaleProvider>,
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "DE" }));
+
+    expect(await screen.findByText("Wohin geht’s?")).toBeTruthy();
+    expect(
+      screen.queryByRole("button", { name: "Check nearby streets" }),
+    ).toBeNull();
+    expect(
+      screen.getByRole("button", { name: "Straßen in der Nähe prüfen" }),
+    ).toBeTruthy();
+    expect(window.localStorage.getItem("berlin-parken-locale")).toBe("de");
   });
 
   it("does not replace a newer search result with an older response", async () => {

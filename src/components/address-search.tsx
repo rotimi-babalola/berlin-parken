@@ -1,6 +1,7 @@
 "use client";
 
 import { ensureParkingContext } from "@/lib/parking-context";
+import { useLocale } from "@/lib/i18n";
 import styles from "./address-search.module.css";
 import { AddressSearchForm } from "./address-search-form";
 import { EventSection } from "./event-section";
@@ -8,21 +9,22 @@ import { ParkingResults } from "./parking-results";
 import { ZoneSection } from "./zone-section";
 import { useAddressSearch } from "../hooks/use-address-search";
 
-const dataSources = ["Street parking", "Parking zones", "Road events"];
-
 // Dumb: static explainer card at the top of the side rail.
 function NearbyContext() {
+  const { t } = useLocale();
+  const dataSources = [
+    t("context.source1"),
+    t("context.source2"),
+    t("context.source3"),
+  ];
   return (
     <div className={styles.context}>
       <div className={styles.contextTop}>
-        <h2>Know what’s nearby.</h2>
-        <p>
-          Official Berlin data can show parking infrastructure and street
-          restrictions. It can’t tell us which spaces are free right now.
-        </p>
+        <h2>{t("context.title")}</h2>
+        <p>{t("context.body")}</p>
       </div>
       <div className={styles.sourceList}>
-        <span className={styles.sourceHeading}>WHAT WE LOOK AT</span>
+        <span className={styles.sourceHeading}>{t("context.heading")}</span>
         {dataSources.map((source, index) => (
           <div className={styles.sourceRow} key={source}>
             <span className={styles.sourceIndex}>0{index + 1}</span>
@@ -33,10 +35,7 @@ function NearbyContext() {
           </div>
         ))}
       </div>
-      <p className={styles.contextFoot}>
-        Built around Berlin’s open geodata<span aria-hidden="true"> · </span>
-        Updated as source data allows
-      </p>
+      <p className={styles.contextFoot}>{t("context.foot")}</p>
     </div>
   );
 }
@@ -45,6 +44,7 @@ function NearbyContext() {
 // (dumb form + supply report) beside the context rail (zones + events).
 export function AddressSearch() {
   const search = useAddressSearch();
+  const { t } = useLocale();
   const { zones, events } = ensureParkingContext(
     (search.parking ?? {}) as Record<string, unknown>,
   );
@@ -77,11 +77,11 @@ export function AddressSearch() {
           loading={search.parkingLoading}
         />
       </section>
-      <aside className={styles.sideRail} aria-label="Nearby context">
+      <aside className={styles.sideRail} aria-label={t("context.asideLabel")}>
         <NearbyContext />
         {search.parkingLoading ? (
           <div className={styles.railCard}>
-            <p role="status">Loading zones and events…</p>
+            <p role="status">{t("context.loading")}</p>
           </div>
         ) : contextReady ? (
           <>
