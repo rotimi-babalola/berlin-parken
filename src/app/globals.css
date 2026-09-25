@@ -1,15 +1,23 @@
 :root {
   color-scheme: light;
-  --ink: #1e2924;
-  --muted: #69736d;
+  --ink: #1a1712;
+  --muted: #5c5546;
+  --bone: #f4efe3;
+  --card: #fffdf6;
+  --line: #d8cfb8;
+  --vermilion: #b3351f;
   --green: #315d49;
   --green-dark: #264a39;
-  --paper: #f7f8f4;
-  --line: #e4e8e1;
+  --paper: #f4efe3;
 }
 
-* { box-sizing: border-box; }
-html, body { min-height: 100%; }
+* {
+  box-sizing: border-box;
+}
+html,
+body {
+  min-height: 100%;
+}
 body {
   margin: 0;
   background: var(--paper);
@@ -17,9 +25,17 @@ body {
   font-family: Arial, Helvetica, sans-serif;
   -webkit-font-smoothing: antialiased;
 }
-button, input { font: inherit; }
-button:focus-visible, input:focus-visible, a:focus-visible {
+button,
+input {
+  font: inherit;
+}
+button:focus-visible,
+input:focus-visible,
+a:focus-visible {
   outline: 3px solid #b47c42;
   outline-offset: 3px;
 }
-::selection { background: #d9e7dc; color: var(--ink); }
+::selection {
+  background: #e8c9b8;
+  color: var(--ink);
+}

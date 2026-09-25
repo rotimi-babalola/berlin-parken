@@ -1,6 +1,9 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { createPhotonProvider, normalizePhotonFeature } from "../src/lib/geocoder/photon.ts";
+import {
+  createPhotonProvider,
+  normalizePhotonFeature,
+} from "../src/lib/geocoder/photon.ts";
 
 test("normalizes a Berlin house suggestion into the provider-neutral shape", () => {
   const result = normalizePhotonFeature({
@@ -32,7 +35,12 @@ test("rejects suggestions outside Berlin or without point coordinates", () => {
   const outsideBerlin = normalizePhotonFeature({
     type: "Feature",
     geometry: { type: "Point", coordinates: [13.6, 52.5] },
-    properties: { city: "Potsdam", countrycode: "DE", osm_type: "N", osm_id: 4 },
+    properties: {
+      city: "Potsdam",
+      countrycode: "DE",
+      osm_type: "N",
+      osm_id: 4,
+    },
   });
   const invalidGeometry = normalizePhotonFeature({
     type: "Feature",
@@ -48,13 +56,22 @@ test("sends the query with a Berlin bounding box and returns normalized suggesti
   let requestedUrl = "";
   const provider = createPhotonProvider(async (input) => {
     requestedUrl = String(input);
-    return new Response(JSON.stringify({
-      features: [1, 2].map((osmId) => ({
-        type: "Feature",
-        geometry: { type: "Point", coordinates: [13.405, 52.52] },
-        properties: { osm_type: "N", osm_id: osmId, name: "Alexanderplatz", city: "Berlin", countrycode: "DE" },
-      })),
-    }), { status: 200, headers: { "Content-Type": "application/json" } });
+    return new Response(
+      JSON.stringify({
+        features: [1, 2].map((osmId) => ({
+          type: "Feature",
+          geometry: { type: "Point", coordinates: [13.405, 52.52] },
+          properties: {
+            osm_type: "N",
+            osm_id: osmId,
+            name: "Alexanderplatz",
+            city: "Berlin",
+            countrycode: "DE",
+          },
+        })),
+      }),
+      { status: 200, headers: { "Content-Type": "application/json" } },
+    );
   });
 
   const suggestions = await provider.suggest("Alexanderplatz");

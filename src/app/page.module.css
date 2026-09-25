@@ -9,7 +9,7 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  border-bottom: 1px solid var(--line);
+  border-bottom: 2px solid var(--ink);
 }
 .brand {
   display: inline-flex;
@@ -20,7 +20,7 @@
   letter-spacing: -0.5px;
 }
 .brandLight {
-  color: var(--green);
+  color: var(--vermilion);
   font-weight: 400;
 }
 .brandMark {
@@ -30,13 +30,13 @@
   width: 19px;
   height: 19px;
   padding: 3px;
-  background: var(--green);
+  background: var(--vermilion);
   border-radius: 5px;
 }
 .brandMark span {
   display: block;
   width: 3px;
-  background: #edf3ec;
+  background: #f4efe3;
   border-radius: 3px;
 }
 .brandMark span:nth-child(1) {
@@ -52,7 +52,7 @@
   display: flex;
   align-items: center;
   gap: 9px;
-  color: #68746d;
+  color: var(--muted);
   font-size: 10px;
   font-weight: 700;
   letter-spacing: 1.25px;
@@ -61,7 +61,7 @@
   width: 7px;
   height: 7px;
   border-radius: 50%;
-  background: #729a70;
+  background: var(--vermilion);
 }
 .content {
   max-width: 1216px;
@@ -86,75 +86,6 @@
   font-size: 16px;
   line-height: 1.65;
 }
-.workspace {
-  display: grid;
-  grid-template-columns: minmax(0, 1.35fr) minmax(290px, 0.8fr);
-  gap: 24px;
-  align-items: start;
-  margin-top: 42px;
-}
-.context {
-  overflow: hidden;
-  border: 1px solid #e3e7df;
-  border-radius: 8px;
-  background: #fff;
-}
-.contextTop {
-  padding: 27px 27px 23px;
-}
-.contextTop h2 {
-  margin: 13px 0 10px;
-  font-family: Georgia, "Times New Roman", serif;
-  font-size: 27px;
-  font-weight: 400;
-  letter-spacing: -0.5px;
-}
-.contextTop p {
-  margin: 0;
-  color: var(--muted);
-  font-size: 13px;
-  line-height: 1.65;
-}
-.sourceList {
-  padding: 18px 27px 10px;
-  border-top: 1px solid #edf0eb;
-}
-.sourceHeading {
-  display: block;
-  margin-bottom: 6px;
-  color: var(--muted);
-  font-size: 9px;
-  font-weight: 700;
-  letter-spacing: 1.25px;
-}
-.sourceRow {
-  min-height: 43px;
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  border-bottom: 1px solid #eff1ed;
-  font-size: 12px;
-  font-weight: 600;
-}
-.sourceRow:last-child {
-  border-bottom: 0;
-}
-.sourceIndex {
-  color: var(--muted);
-  font-size: 10px;
-  font-variant-numeric: tabular-nums;
-}
-.sourceArrow {
-  margin-left: auto;
-  color: #819087;
-}
-.contextFoot {
-  margin: 0;
-  padding: 15px 27px;
-  border-top: 1px solid #edf0eb;
-  color: var(--muted);
-  font-size: 10px;
-}
 .footer {
   display: flex;
   justify-content: space-between;
@@ -172,22 +103,6 @@
   }
   .content {
     padding: 52px 20px 24px;
-  }
-  .workspace {
-    grid-template-columns: 1fr;
-    gap: 16px;
-    margin-top: 30px;
-  }
-  .contextTop {
-    padding: 22px 22px 19px;
-  }
-  .sourceList {
-    padding-right: 22px;
-    padding-left: 22px;
-  }
-  .contextFoot {
-    padding-right: 22px;
-    padding-left: 22px;
   }
   .footer {
     flex-direction: column;

@@ -9,6 +9,7 @@ Tasks are ordered by dependency. See [plan.md](plan.md) for design choices, deta
 **Description:** Inspect the repository and choose the smallest suitable web stack and geocoding/autocomplete provider. Verify WFS capabilities, feature types, CRS, response format, spatial-filter behavior, relevant properties, pagination, and freshness metadata for the three official Berlin datasets. Record provider attribution/key requirements and a versioned internal result shape before building integrations.
 
 **Acceptance criteria:**
+
 - [x] Record chosen stack and local run/build/lint commands; note that they are not runnable until the app scaffold exists.
 - [x] Document autocomplete provider constraints, attribution, availability, and configuration needs.
 - [x] Document live WFS endpoints, feature types, CRS, spatial queries, important properties, pagination, and freshness behavior for all three datasets.
@@ -27,6 +28,7 @@ Tasks are ordered by dependency. See [plan.md](plan.md) for design choices, deta
 **Description:** Build a Berlin-focused destination form with accessible autocomplete and a 100 m–1 km radius control. Submit only a selected suggestion with valid coordinates.
 
 **Acceptance criteria:**
+
 - [x] Suggestions are filtered to Berlin and selection stores label and coordinates.
 - [x] Radius accepts 100–1,000 m and is clearly displayed.
 - [x] Keyboard operation, changed-query invalidation, and loading/empty/error states work.
@@ -40,6 +42,7 @@ Tasks are ordered by dependency. See [plan.md](plan.md) for design choices, deta
 **Estimated scope:** Large because the repository had no application scaffold.
 
 ### Checkpoint: After Tasks 1–2
+
 - [x] Service contracts and provider decisions are documented.
 - [x] A user can select a Berlin destination and radius.
 - [x] Stale coordinates cannot be submitted after editing the query.
@@ -51,6 +54,7 @@ Tasks are ordered by dependency. See [plan.md](plan.md) for design choices, deta
 **Description:** Query the outdoor parking WFS around the selected destination, filter to the true selected radius, classify restrictions, and aggregate mapped estimated capacity.
 
 **Acceptance criteria:**
+
 - [x] Spatial query is bounded and paginated; features outside the radius are excluded.
 - [x] Mapped capacity and restriction classes are reported without implying current occupancy.
 - [x] Empty, partial, malformed, and failed responses are represented honestly.
@@ -68,6 +72,7 @@ Tasks are ordered by dependency. See [plan.md](plan.md) for design choices, deta
 **Description:** Query official parking-zone and planned-event WFS layers near the destination and show relevant properties, event dates, distances, and source context.
 
 **Acceptance criteria:**
+
 - [ ] Managed-zone intersection and available details are displayed with the on-site-signage caveat.
 - [ ] Relevant planned events show type/date/distance where available.
 - [ ] No matching events differs from unavailable data; the event feed's 14-day start horizon is disclosed.
@@ -85,6 +90,7 @@ Tasks are ordered by dependency. See [plan.md](plan.md) for design choices, deta
 **Description:** Build the user-facing result with transparent supply/difficulty information, factual reasons, best and backup street areas, zone status, and planned events.
 
 **Acceptance criteria:**
+
 - [ ] Result includes destination, radius, mapped supply/restrictions, zone status, street candidates, distances, and source-backed reasons.
 - [ ] Suggested street candidates exclude prohibited features and are based on distinct nearby streets.
 - [ ] Any supply difficulty label is explained; uncalibrated probability/search-time estimates and unsupported garage recommendations are omitted.
@@ -99,6 +105,7 @@ Tasks are ordered by dependency. See [plan.md](plan.md) for design choices, deta
 **Estimated scope:** Medium (4–5 files)
 
 ### Checkpoint: After Tasks 3–5
+
 - [ ] Sparse and dense/managed Berlin searches produce coherent complete results.
 - [ ] Event horizon and freshness limitations are visible.
 - [ ] Every result is traceable to data; unsupported predictions are not presented as fact.
@@ -110,6 +117,7 @@ Tasks are ordered by dependency. See [plan.md](plan.md) for design choices, deta
 **Description:** Add bounded timeouts and query limits, clear retryable failures, safe provider configuration, attribution, and responsive/accessibility review.
 
 **Acceptance criteria:**
+
 - [ ] Timeouts, rate limits, malformed payloads, and partial WFS results do not break search.
 - [ ] Required secrets remain server-side and setup is documented.
 - [ ] Search and results remain keyboard-accessible and usable on narrow screens.
@@ -123,6 +131,7 @@ Tasks are ordered by dependency. See [plan.md](plan.md) for design choices, deta
 **Estimated scope:** Medium (3–5 files)
 
 ### Checkpoint: Complete
+
 - [ ] All task acceptance criteria are met and project checks pass.
 - [ ] Search remains useful when one external dataset is unavailable.
 - [ ] Product owner reviews result language and v1 boundary for probability, search time, and garage recommendations.

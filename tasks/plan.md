@@ -37,17 +37,20 @@ Repository/stack and provider decisions
 ## Task List
 
 ### Phase 1: Foundation and address search
+
 - [x] Task 1: Confirm app stack, provider choices, and service contracts
 - [x] Task 2: Deliver destination autocomplete and radius selection
 - [ ] Checkpoint: Address resolves to a Berlin coordinate and radius survives submission
 
 ### Phase 2: Data-backed result slices
+
 - [x] Task 3: Show nearby street-parking supply and restrictions
 - [x] Task 4: Show parking-zone status and planned events
 - [ ] Task 5: Present explainable parking guidance and nearby street candidates
 - [ ] Checkpoint: A Berlin address produces a complete result with source limitations visible
 
 ### Phase 3: Reliability and release
+
 - [ ] Task 6: Handle provider failures, accessibility, and operational limits
 - [ ] Checkpoint: Acceptance criteria pass on central, peripheral, and boundary cases
 
@@ -58,6 +61,7 @@ Repository/stack and provider decisions
 **Description:** Inspect the repository, select the smallest suitable web stack and geocoding provider, verify live WFS capabilities/schemas/spatial queries for all three Berlin datasets, and record provider requirements plus a versioned result contract before integration.
 
 **Acceptance criteria:**
+
 - [x] Chosen stack and planned local commands are recorded; the repository has no app scaffold yet, so commands are not runnable.
 - [x] Autocomplete provider constraints, attribution, availability, and adapter configuration are documented.
 - [x] Each WFS layer's endpoint, feature type, CRS, query method, fields, pagination behavior, and freshness context are documented from live service metadata and samples.
@@ -76,6 +80,7 @@ Repository/stack and provider decisions
 **Description:** Build the main search form with Berlin-focused address suggestions, keyboard-accessible selection, and a radius control spanning 100 m to 1 km. Only a selected suggestion with valid coordinates can be submitted; changing the query invalidates the previous selection.
 
 **Acceptance criteria:**
+
 - [x] Typing yields selectable address suggestions filtered to Berlin and selecting one stores its display label and coordinates.
 - [x] The radius control accepts values from 100 m through 1,000 m and displays the chosen value clearly.
 - [x] Keyboard and screen-reader users can operate the suggestion list and radius control; loading, empty, and provider-error states are communicated.
@@ -93,6 +98,7 @@ Repository/stack and provider decisions
 **Description:** From the selected destination and radius, query the outdoor parking WFS layer using EPSG:25833 spatial bounds, paginate within documented limits, apply a true radius filter, classify returned categories, and aggregate estimated mapped capacity by usability and nearby street. Keep unknown or conditional categories visible as such.
 
 **Acceptance criteria:**
+
 - [x] Queries are spatially bounded, paginated safely, and results outside the selected radius are excluded.
 - [x] Output reports mapped estimated capacity and usable/conditional/restricted categories without claiming live availability.
 - [x] Empty, partial, malformed, and upstream-error responses produce a clear unavailable/partial-data state rather than fabricated zero capacity.
@@ -110,6 +116,7 @@ Repository/stack and provider decisions
 **Description:** Query the official parking-zone WFS and the planned-events WFS near the chosen destination. Match zones and events spatially, retain relevant attributes and dates, and expose the event time window and source freshness so users can distinguish active events from upcoming ones.
 
 **Acceptance criteria:**
+
 - [x] Result identifies whether the search area intersects a managed zone and displays available zone details with an on-site-signage caveat.
 - [x] Result lists relevant events returned by the event service with type, date, and distance where supplied.
 - [x] Event absence and dataset unavailability are distinguished; copy explains the 14-day start horizon and incomplete coverage.
@@ -127,6 +134,7 @@ Repository/stack and provider decisions
 **Description:** Assemble the requested result experience from verified data: a transparent difficulty/supply label, factual “why” factors, best and backup nearby street areas, managed-zone context, and a dated event list. Keep estimated probability/search time hidden until calibrated; do not list a named car park without an additional verified source.
 
 **Acceptance criteria:**
+
 - [ ] The result presents destination and radius, mapped parking supply/restrictions, zone status, and nearby street candidates with distance and source-backed reasons.
 - [ ] Best and backup areas are derived from distinct eligible nearby street features and never from features classified as prohibited.
 - [ ] Any difficulty band has documented deterministic thresholds and is labelled as an estimate based on mapped supply; no unvalidated chance-of-finding or search-time statistic is presented as fact.
@@ -145,6 +153,7 @@ Repository/stack and provider decisions
 **Description:** Harden the v1 flow for routine external-service limits and assistive technology. Add bounded request timeouts, safe query limits, clear retryable errors, configuration documentation, source attribution, and a final manual review of responsive behavior.
 
 **Acceptance criteria:**
+
 - [ ] Geocoder and WFS timeouts, rate limits, malformed payloads, and partial results are handled without breaking the page.
 - [ ] Provider keys, if required, are kept out of client-visible source and documented for local setup.
 - [ ] Search and result flow meet the project's accessibility conventions and remain usable on narrow screens.
@@ -160,31 +169,34 @@ Repository/stack and provider decisions
 ## Checkpoints
 
 ### Checkpoint: After Tasks 1–2
+
 - [x] Provider and data contracts are documented from actual service responses.
 - [ ] A user can select a Berlin destination and radius.
 - [ ] The chosen destination cannot silently fall back to stale coordinates.
 
 ### Checkpoint: After Tasks 3–5
+
 - [ ] Complete results work for a sparse area and a dense/managed area.
 - [ ] Event data is shown with the dataset's stated time horizon and freshness caveat.
 - [ ] All metrics and reasons are traceable to their source; availability predictions remain explicitly uncalibrated or absent.
 
 ### Checkpoint: Complete
+
 - [ ] All task acceptance criteria are met and project checks pass.
 - [ ] Search remains usable when one external dataset is unavailable.
 - [ ] Product owner reviews the result language and the explicit boundary around probability, search-time, and garage recommendations.
 
 ## Risks and Mitigations
 
-| Risk | Impact | Mitigation |
-|---|---|---|
-| Parking inventory is mapped supply, not real-time occupancy | High: probability/search-time claims could mislead | Lead with supply metrics; gate probabilistic estimates on calibration against observed outcomes. |
-| WFS schema, query limits, availability, or CRS vary by service | High: missing or incorrect nearby results | Verify live capabilities early, use spatial filters and bounded pagination, validate responses, and report partial failures. |
-| Event feed has a limited lookahead and does not represent every disruption | Medium: users may infer that no listed event means no disruption | Display the 14-day start horizon and source freshness; distinguish no matching records from a failed feed. |
-| Zone details can vary locally and signs govern | Medium: fee/time guidance can be inaccurate | Show sourced zone information as guidance, include official-source attribution and signage caveat. |
-| A nearby polygon distance differs from a walkable route | Medium: displayed walking distance may be too optimistic | Initially call it straight-line distance or “nearby”; add route distance only with a routing/street-network source. |
-| Geocoding provider has terms, rate limits, or key constraints | Medium: autocomplete can fail or raise operational cost | Decide provider in Task 1, observe its terms, isolate it behind an adapter, and surface failures. |
-| Backup “Parkhaus” example lacks a specified dataset | Medium: recommendation cannot be supported in v1 | Use a second street candidate; treat verified garage inventory as follow-up scope. |
+| Risk                                                                       | Impact                                                           | Mitigation                                                                                                                   |
+| -------------------------------------------------------------------------- | ---------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------- |
+| Parking inventory is mapped supply, not real-time occupancy                | High: probability/search-time claims could mislead               | Lead with supply metrics; gate probabilistic estimates on calibration against observed outcomes.                             |
+| WFS schema, query limits, availability, or CRS vary by service             | High: missing or incorrect nearby results                        | Verify live capabilities early, use spatial filters and bounded pagination, validate responses, and report partial failures. |
+| Event feed has a limited lookahead and does not represent every disruption | Medium: users may infer that no listed event means no disruption | Display the 14-day start horizon and source freshness; distinguish no matching records from a failed feed.                   |
+| Zone details can vary locally and signs govern                             | Medium: fee/time guidance can be inaccurate                      | Show sourced zone information as guidance, include official-source attribution and signage caveat.                           |
+| A nearby polygon distance differs from a walkable route                    | Medium: displayed walking distance may be too optimistic         | Initially call it straight-line distance or “nearby”; add route distance only with a routing/street-network source.          |
+| Geocoding provider has terms, rate limits, or key constraints              | Medium: autocomplete can fail or raise operational cost          | Decide provider in Task 1, observe its terms, isolate it behind an adapter, and surface failures.                            |
+| Backup “Parkhaus” example lacks a specified dataset                        | Medium: recommendation cannot be supported in v1                 | Use a second street candidate; treat verified garage inventory as follow-up scope.                                           |
 
 ## Open Questions
 
