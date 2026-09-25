@@ -4,14 +4,18 @@ const BERLIN_BOUNDS = "13.0884,52.3383,13.7611,52.6755";
 const DEFAULT_ENDPOINT = "https://photon.komoot.io/api/";
 
 function record(value: unknown): Record<string, unknown> | null {
-  return value !== null && typeof value === "object" ? value as Record<string, unknown> : null;
+  return value !== null && typeof value === "object"
+    ? (value as Record<string, unknown>)
+    : null;
 }
 
 function text(value: unknown): string | undefined {
   return typeof value === "string" && value.trim() ? value.trim() : undefined;
 }
 
-export function normalizePhotonFeature(value: unknown): AddressSuggestion | null {
+export function normalizePhotonFeature(
+  value: unknown,
+): AddressSuggestion | null {
   const feature = record(value);
   const properties = record(feature?.properties);
   const geometry = record(feature?.geometry);
@@ -27,29 +31,47 @@ export function normalizePhotonFeature(value: unknown): AddressSuggestion | null
     !Number.isFinite(coordinates[1]) ||
     text(properties.city)?.toLocaleLowerCase() !== "berlin" ||
     text(properties.countrycode)?.toLocaleLowerCase() !== "de"
-  ) return null;
+  )
+    return null;
 
   const street = text(properties.street);
   const houseNumber = text(properties.housenumber);
-  const label = street && houseNumber
-    ? `${street} ${houseNumber}`
-    : text(properties.name) ?? street;
+  const label =
+    street && houseNumber
+      ? `${street} ${houseNumber}`
+      : (text(properties.name) ?? street);
 
   if (!label) return null;
 
-  const detail = [text(properties.postcode), text(properties.district), "Berlin"]
-    .filter((part, index, all): part is string => Boolean(part) && all.indexOf(part) === index)
+  const detail = [
+    text(properties.postcode),
+    text(properties.district),
+    "Berlin",
+  ]
+    .filter(
+      (part, index, all): part is string =>
+        Boolean(part) && all.indexOf(part) === index,
+    )
     .join(" · ");
   const osmType = text(properties.osm_type);
   const osmId = properties.osm_id;
-  const id = osmType && (typeof osmId === "string" || typeof osmId === "number")
-    ? `${osmType}:${osmId}`
-    : `${coordinates[0]}:${coordinates[1]}:${label}`;
+  const id =
+    osmType && (typeof osmId === "string" || typeof osmId === "number")
+      ? `${osmType}:${osmId}`
+      : `${coordinates[0]}:${coordinates[1]}:${label}`;
 
-  return { id, label, detail, longitude: coordinates[0], latitude: coordinates[1] };
+  return {
+    id,
+    label,
+    detail,
+    longitude: coordinates[0],
+    latitude: coordinates[1],
+  };
 }
 
-export function createPhotonProvider(fetcher: typeof fetch = fetch): GeocoderProvider {
+export function createPhotonProvider(
+  fetcher: typeof fetch = fetch,
+): GeocoderProvider {
   return {
     async suggest(query) {
       const endpoint = process.env.PHOTON_API_URL || DEFAULT_ENDPOINT;
@@ -67,11 +89,14 @@ export function createPhotonProvider(fetcher: typeof fetch = fetch): GeocoderPro
       if (!response.ok) throw new Error(`Photon returned ${response.status}`);
 
       const payload = record(await response.json());
-      if (!payload || !Array.isArray(payload.features)) throw new Error("Photon returned an invalid response");
+      if (!payload || !Array.isArray(payload.features))
+        throw new Error("Photon returned an invalid response");
 
       const normalized = payload.features
         .map(normalizePhotonFeature)
-        .filter((suggestion): suggestion is AddressSuggestion => suggestion !== null);
+        .filter(
+          (suggestion): suggestion is AddressSuggestion => suggestion !== null,
+        );
       const uniqueSuggestions = new Map<string, AddressSuggestion>();
       for (const suggestion of normalized) {
         const key = `${suggestion.label.toLocaleLowerCase()}|${suggestion.detail.toLocaleLowerCase()}`;

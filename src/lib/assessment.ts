@@ -8,6 +8,7 @@ export type Assessment = {
 // widen only with calibrated occupancy evidence per docs/result-contract.md.
 export function assessSupply(mappedSpaces: number): Assessment {
   if (mappedSpaces < 400) return { label: "Scarce", step: 1, totalSteps: 3 };
-  if (mappedSpaces <= 1200) return { label: "Moderate", step: 2, totalSteps: 3 };
+  if (mappedSpaces <= 1200)
+    return { label: "Moderate", step: 2, totalSteps: 3 };
   return { label: "Ample", step: 3, totalSteps: 3 };
 }

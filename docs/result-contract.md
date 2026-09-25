@@ -6,7 +6,12 @@ This is the app-facing contract between the search flow, data adapters, analysis
 type SourceState =
   | { status: "available"; fetchedAt: string; datasetUpdatedAt?: string }
   | { status: "empty"; fetchedAt: string; datasetUpdatedAt?: string }
-  | { status: "partial"; fetchedAt: string; message: string; datasetUpdatedAt?: string }
+  | {
+      status: "partial";
+      fetchedAt: string;
+      message: string;
+      datasetUpdatedAt?: string;
+    }
   | { status: "unavailable"; message: string };
 
 type Destination = {

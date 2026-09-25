@@ -1,10 +1,7 @@
 import { fetchWfsFeatures, wfsParams } from "./wfs.ts";
 
 export type ParkingUsability =
-  | "usable"
-  | "conditional"
-  | "restricted"
-  | "unknown";
+  "usable" | "conditional" | "restricted" | "unknown";
 
 export type ParkingSummary = {
   status: "available" | "empty" | "partial" | "unavailable";

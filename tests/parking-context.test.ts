@@ -90,10 +90,10 @@ test("keeps active and upcoming events within 14 days, drops expired and far-fut
 
   const result = await getParkingContext(13.405, 52.52, 500);
 
-  assert.deepEqual(
-    result.events.items.map((item) => item.id).sort(),
-    ["active", "upcoming"],
-  );
+  assert.deepEqual(result.events.items.map((item) => item.id).sort(), [
+    "active",
+    "upcoming",
+  ]);
   assert.equal(result.events.source.status, "available");
 });
 
@@ -159,9 +159,7 @@ test("marks results partial when the page budget is reached", async (t) => {
   assert.equal(zonePages, 5);
   assert.equal(result.zones.source.status, "partial");
   assert.match(
-    result.zones.source.status === "partial"
-      ? result.zones.source.message
-      : "",
+    result.zones.source.status === "partial" ? result.zones.source.message : "",
     /page limit/,
   );
 });
