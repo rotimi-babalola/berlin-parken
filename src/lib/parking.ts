@@ -17,10 +17,10 @@ export type ParkingSummary = {
   streets: Array<{ name: string; mappedSpaces: number; features: number }>;
 };
 
-type Position = [number, number];
+export type Position = [number, number];
 type Ring = Position[];
 type Polygon = Ring[];
-type Geometry = {
+export type Geometry = {
   type: "Polygon" | "MultiPolygon";
   coordinates: Polygon | Polygon[];
 };
@@ -124,7 +124,7 @@ function ringDistance(point: Position, ring: Ring): number {
   return distance;
 }
 
-function geometryDistance(point: Position, geometry: Geometry): number {
+export function geometryDistance(point: Position, geometry: Geometry): number {
   const polygons =
     geometry.type === "Polygon"
       ? [geometry.coordinates as Polygon]

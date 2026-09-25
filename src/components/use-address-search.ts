@@ -4,12 +4,15 @@ import { useEffect, useRef, useState } from "react";
 import type { KeyboardEvent, SubmitEvent } from "react";
 import type { AddressSuggestion } from "@/lib/geocoder/types";
 import type { ParkingSummary } from "@/lib/parking";
+import type { ParkingContext } from "@/lib/parking-context";
 import { useAddressSuggestions } from "./use-address-suggestions";
 
 export type SearchReady = {
   destination: AddressSuggestion;
   radiusMeters: number;
 };
+
+export type ParkingResult = ParkingSummary & ParkingContext;
 
 export function useAddressSearch() {
   const [query, setQuery] = useState("");
@@ -19,7 +22,7 @@ export function useAddressSearch() {
   const [suggestionsDismissed, setSuggestionsDismissed] = useState(false);
   const [submitError, setSubmitError] = useState(false);
   const [searchReady, setSearchReady] = useState<SearchReady | null>(null);
-  const [parking, setParking] = useState<ParkingSummary | null>(null);
+  const [parking, setParking] = useState<ParkingResult | null>(null);
   const [parkingLoading, setParkingLoading] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
   const optionRefs = useRef<Array<HTMLLIElement | null>>([]);
@@ -114,7 +117,7 @@ export function useAddressSearch() {
       .then(async (response) => {
         if (!response.ok)
           throw new Error("Parking data is temporarily unavailable.");
-        const result = (await response.json()) as ParkingSummary;
+        const result = (await response.json()) as ParkingResult;
         if (parkingRequest.current === controller) setParking(result);
       })
       .catch(() => {
@@ -129,6 +132,8 @@ export function useAddressSearch() {
           unknownSpaces: 0,
           featureCount: 0,
           streets: [],
+          zones: { source: { status: "unavailable", message: "Parking-zone data is temporarily unavailable." }, items: [] },
+          events: { source: { status: "unavailable", message: "Planned-event data is temporarily unavailable." }, items: [] },
         });
       })
       .finally(() => {

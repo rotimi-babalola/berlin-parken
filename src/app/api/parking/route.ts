@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { getNearbyParking } from "@/lib/parking";
+import { getParkingContext } from "@/lib/parking-context";
 
 export const runtime = "nodejs";
 
@@ -25,10 +26,12 @@ export async function GET(request: Request) {
     );
   }
 
+  const [parking, context] = await Promise.all([
+    getNearbyParking(longitude, latitude, radiusMeters),
+    getParkingContext(longitude, latitude, radiusMeters),
+  ]);
   return NextResponse.json(
-    await getNearbyParking(longitude, latitude, radiusMeters),
-    {
-      headers: { "Cache-Control": "no-store" },
-    },
+    { ...parking, ...context },
+    { headers: { "Cache-Control": "no-store" } },
   );
 }

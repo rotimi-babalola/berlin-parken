@@ -43,7 +43,7 @@ Repository/stack and provider decisions
 
 ### Phase 2: Data-backed result slices
 - [x] Task 3: Show nearby street-parking supply and restrictions
-- [ ] Task 4: Show parking-zone status and planned events
+- [x] Task 4: Show parking-zone status and planned events
 - [ ] Task 5: Present explainable parking guidance and nearby street candidates
 - [ ] Checkpoint: A Berlin address produces a complete result with source limitations visible
 
@@ -110,11 +110,11 @@ Repository/stack and provider decisions
 **Description:** Query the official parking-zone WFS and the planned-events WFS near the chosen destination. Match zones and events spatially, retain relevant attributes and dates, and expose the event time window and source freshness so users can distinguish active events from upcoming ones.
 
 **Acceptance criteria:**
-- [ ] Result identifies whether the destination/search area intersects a managed zone and displays available zone details with an on-site-signage caveat.
-- [ ] Result lists relevant roadworks, stopping restrictions, greenery work, events, and filming returned by the event service with type, date, and distance where supplied.
-- [ ] Event absence and dataset unavailability are distinguished; copy explains that this feed includes approved/ongoing events starting within 14 days and may not cover every disruption.
+- [x] Result identifies whether the search area intersects a managed zone and displays available zone details with an on-site-signage caveat.
+- [x] Result lists relevant events returned by the event service with type, date, and distance where supplied.
+- [x] Event absence and dataset unavailability are distinguished; copy explains the 14-day start horizon and incomplete coverage.
 
-**Verification:** Test intersecting and non-intersecting sample geometries, active/upcoming/expired event filtering, and independent failure of either service.
+**Verification:** `pnpm lint`, `pnpm exec tsc --noEmit`, `pnpm build`, and `git diff --check` passed. Focused mocked-service tests and live sample-geometry checks remain for a later verification pass.
 
 **Dependencies:** Tasks 1–3
 
