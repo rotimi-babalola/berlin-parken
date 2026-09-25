@@ -314,19 +314,16 @@ function summarize(
     // revisit if per-street usability mix needs ranking weight.
     if (usability === "restricted") continue;
     const name = String(properties.strassenname ?? "").trim();
-    if (name) {
-      const distance = geometryDistance(point, feature.geometry!);
+    if (name && feature.geometry) {
+      const rounded = Math.round(geometryDistance(point, feature.geometry));
       const street = streets.get(name) ?? {
         mappedSpaces: 0,
         features: 0,
-        nearestMeters: Math.round(distance),
+        nearestMeters: rounded,
       };
       street.mappedSpaces += capacity;
       street.features++;
-      street.nearestMeters = Math.min(
-        street.nearestMeters,
-        Math.round(distance),
-      );
+      street.nearestMeters = Math.min(street.nearestMeters, rounded);
       streets.set(name, street);
     }
   }

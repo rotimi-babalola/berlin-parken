@@ -78,9 +78,24 @@ describe("AddressSearch", () => {
       unknownSpaces: 20,
       featureCount: 12,
       streets: [
-        { name: "Torstraße", mappedSpaces: 420, features: 5 },
-        { name: "Linienstraße", mappedSpaces: 310, features: 4 },
-        { name: "Gormannstraße", mappedSpaces: 190, features: 3 },
+        {
+          name: "Torstraße",
+          mappedSpaces: 420,
+          features: 5,
+          nearestMeters: 120,
+        },
+        {
+          name: "Linienstraße",
+          mappedSpaces: 310,
+          features: 4,
+          nearestMeters: 200,
+        },
+        {
+          name: "Gormannstraße",
+          mappedSpaces: 190,
+          features: 3,
+          nearestMeters: 340,
+        },
       ],
     });
 
@@ -96,6 +111,7 @@ describe("AddressSearch", () => {
     for (const street of ["Torstraße", "Linienstraße", "Gormannstraße"]) {
       expect(within(results).getByText(street)).toBeTruthy();
     }
+    expect(within(results).getByText(/120 m away/)).toBeTruthy();
   });
 
   it("pages through more than five events with the carousel controls", async () => {
