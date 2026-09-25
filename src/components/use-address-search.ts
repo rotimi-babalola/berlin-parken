@@ -4,7 +4,10 @@ import { useEffect, useRef, useState } from "react";
 import type { KeyboardEvent, SubmitEvent } from "react";
 import type { AddressSuggestion } from "@/lib/geocoder/types";
 import type { ParkingSummary } from "@/lib/parking";
-import type { ParkingContext } from "@/lib/parking-context";
+import {
+  ensureParkingContext,
+  type ParkingContext,
+} from "@/lib/parking-context";
 import { useAddressSuggestions } from "./use-address-suggestions";
 
 export type SearchReady = {
@@ -117,8 +120,15 @@ export function useAddressSearch() {
       .then(async (response) => {
         if (!response.ok)
           throw new Error("Parking data is temporarily unavailable.");
-        const result = (await response.json()) as ParkingResult;
-        if (parkingRequest.current === controller) setParking(result);
+        const result = (await response.json()) as ParkingSummary &
+          Partial<ParkingContext>;
+        if (parkingRequest.current === controller)
+          setParking({
+            ...result,
+            ...ensureParkingContext(
+              result as unknown as Record<string, unknown>,
+            ),
+          });
       })
       .catch(() => {
         if (parkingRequest.current !== controller) return;
@@ -132,8 +142,20 @@ export function useAddressSearch() {
           unknownSpaces: 0,
           featureCount: 0,
           streets: [],
-          zones: { source: { status: "unavailable", message: "Parking-zone data is temporarily unavailable." }, items: [] },
-          events: { source: { status: "unavailable", message: "Planned-event data is temporarily unavailable." }, items: [] },
+          zones: {
+            source: {
+              status: "unavailable",
+              message: "Parking-zone data is temporarily unavailable.",
+            },
+            items: [],
+          },
+          events: {
+            source: {
+              status: "unavailable",
+              message: "Planned-event data is temporarily unavailable.",
+            },
+            items: [],
+          },
         });
       })
       .finally(() => {

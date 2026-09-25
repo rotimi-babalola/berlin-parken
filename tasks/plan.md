@@ -114,7 +114,7 @@ Repository/stack and provider decisions
 - [x] Result lists relevant events returned by the event service with type, date, and distance where supplied.
 - [x] Event absence and dataset unavailability are distinguished; copy explains the 14-day start horizon and incomplete coverage.
 
-**Verification:** `pnpm lint`, `pnpm exec tsc --noEmit`, `pnpm build`, and `git diff --check` passed. Focused mocked-service tests and live sample-geometry checks remain for a later verification pass.
+**Verification:** `pnpm lint`, `pnpm exec tsc --noEmit`, `pnpm build`, and `git diff --check` passed. Five mocked-service tests in `tests/parking-context.test.ts` cover intersecting/non-intersecting geometries, active/upcoming/expired event filtering, empty vs unavailable per service, independent failure, and the page-budget partial case.
 
 **Dependencies:** Tasks 1–3
 

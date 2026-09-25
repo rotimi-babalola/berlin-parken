@@ -1,9 +1,16 @@
-import type { ParkingResult, SearchReady } from "./use-address-search";
+import type { ParkingSummary } from "@/lib/parking";
+import {
+  ensureParkingContext,
+  type ParkingContext,
+} from "@/lib/parking-context";
+import type { SearchReady } from "./use-address-search";
 import styles from "./address-search.module.css";
+
+export type ParkingResult = ParkingSummary & ParkingContext;
 
 type Props = {
   search: SearchReady | null;
-  parking: ParkingResult | null;
+  parking: (ParkingSummary & Partial<ParkingContext>) | null;
   loading: boolean;
 };
 
@@ -11,6 +18,9 @@ export function ParkingResults({ search, parking, loading }: Props) {
   if (!search) return null;
   const radius =
     search.radiusMeters < 1000 ? `${search.radiusMeters} m` : "1 km";
+  const { zones, events } = ensureParkingContext(
+    (parking ?? {}) as Record<string, unknown>,
+  );
 
   return (
     <>
@@ -114,13 +124,13 @@ export function ParkingResults({ search, parking, loading }: Props) {
             aria-labelledby="zones-title"
           >
             <h3 id="zones-title">Parking management zones</h3>
-            {parking.zones.source.status === "unavailable" ? (
+            {zones.source.status === "unavailable" ? (
               <p role="status">
-                Zone data is unavailable. {parking.zones.source.message}
+                Zone data is unavailable. {zones.source.message}
               </p>
-            ) : parking.zones.items.length ? (
+            ) : zones.items.length ? (
               <ul>
-                {parking.zones.items.map((zone) => (
+                {zones.items.map((zone) => (
                   <li key={zone.id}>
                     <strong>
                       {zone.zone ? `Zone ${zone.zone}` : "Managed parking zone"}
@@ -136,6 +146,9 @@ export function ParkingResults({ search, parking, loading }: Props) {
             ) : (
               <p>No managed parking zone intersects this search area.</p>
             )}
+            {zones.source.status === "partial" && (
+              <p role="status">Partial zone results: {zones.source.message}</p>
+            )}
             <p className={styles.sourceNote}>
               Zone details are guidance; fees and hours can vary locally. Follow
               signs on site.{" "}
@@ -146,8 +159,8 @@ export function ParkingResults({ search, parking, loading }: Props) {
               >
                 Berlin Open Data zone source
               </a>
-              {parking.zones.source.status !== "unavailable"
-                ? ` · Retrieved ${new Date(parking.zones.source.fetchedAt).toLocaleString()}.`
+              {zones.source.status !== "unavailable"
+                ? ` · Retrieved ${new Date(zones.source.fetchedAt).toLocaleString()}.`
                 : ""}
             </p>
           </section>
@@ -156,13 +169,13 @@ export function ParkingResults({ search, parking, loading }: Props) {
             aria-labelledby="events-title"
           >
             <h3 id="events-title">Planned street events</h3>
-            {parking.events.source.status === "unavailable" ? (
+            {events.source.status === "unavailable" ? (
               <p role="status">
-                Event data is unavailable. {parking.events.source.message}
+                Event data is unavailable. {events.source.message}
               </p>
-            ) : parking.events.items.length ? (
+            ) : events.items.length ? (
               <ul>
-                {parking.events.items.map((event) => (
+                {events.items.map((event) => (
                   <li key={event.id}>
                     <strong>{event.type ?? "Planned event"}</strong>
                     {event.street ? ` · ${event.street}` : ""}
@@ -183,6 +196,11 @@ export function ParkingResults({ search, parking, loading }: Props) {
             ) : (
               <p>No matching approved or ongoing events were returned.</p>
             )}
+            {events.source.status === "partial" && (
+              <p role="status">
+                Partial event results: {events.source.message}
+              </p>
+            )}
             <p className={styles.sourceNote}>
               This feed covers approved and ongoing events starting within the
               next 14 days; it may not include every disruption. An empty list
@@ -194,8 +212,8 @@ export function ParkingResults({ search, parking, loading }: Props) {
               >
                 Berlin Open Data event source
               </a>
-              {parking.events.source.status !== "unavailable"
-                ? ` · Retrieved ${new Date(parking.events.source.fetchedAt).toLocaleString()}.`
+              {events.source.status !== "unavailable"
+                ? ` · Retrieved ${new Date(events.source.fetchedAt).toLocaleString()}.`
                 : ""}
             </p>
           </section>

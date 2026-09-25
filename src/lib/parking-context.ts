@@ -3,7 +3,8 @@ import {
   toEpsg25833,
   type Geometry,
   type Position,
-} from "@/lib/parking";
+} from "./parking.ts";
+import { fetchWfsFeatures, wfsParams } from "./wfs.ts";
 
 type Source =
   | { status: "available" | "empty"; fetchedAt: string }
@@ -53,8 +54,35 @@ export type ParkingContext = {
 const zoneEndpoint =
   "https://gdi.berlin.de/services/wfs/parkraumbewirtschaftung";
 const eventEndpoint = "https://gdi.berlin.de/services/wfs/planb_ereignisse";
-const pageSize = 500;
-const maxPages = 5;
+
+export function missingContext(reason?: string): ParkingContext {
+  const message =
+    reason ?? "This Berlin data service is temporarily unavailable.";
+  return {
+    zones: {
+      source: { status: "unavailable", message },
+      items: [],
+    },
+    events: {
+      source: { status: "unavailable", message },
+      items: [],
+    },
+  };
+}
+
+export function ensureParkingContext(
+  value: Record<string, unknown>,
+): ParkingContext {
+  const zones =
+    value.zones && typeof value.zones === "object"
+      ? (value.zones as ParkingContext["zones"])
+      : missingContext("Parking-zone data is temporarily unavailable.").zones;
+  const events =
+    value.events && typeof value.events === "object"
+      ? (value.events as ParkingContext["events"])
+      : missingContext("Planned-event data is temporarily unavailable.").events;
+  return { zones, events };
+}
 
 function validCollection(value: unknown): value is Collection {
   if (!value || typeof value !== "object") return false;
@@ -87,101 +115,27 @@ function dateValue(value: unknown): number | undefined {
   return Number.isFinite(timestamp) ? timestamp : undefined;
 }
 
-function createParams(
-  layer: string,
-  east: number,
-  north: number,
-  radius: number,
-) {
-  return new URLSearchParams({
-    SERVICE: "WFS",
-    VERSION: "2.0.0",
-    REQUEST: "GetFeature",
-    TYPENAMES: layer,
-    COUNT: String(pageSize),
-    OUTPUTFORMAT: "application/json",
-    BBOX: `${east - radius},${north - radius},${east + radius},${north + radius},EPSG:25833`,
-  });
-}
-
-async function fetchFeatures(endpoint: string, params: URLSearchParams) {
-  let url: URL | null = new URL(`${endpoint}?${params}`);
-  const features: RawFeature[] = [];
-  let totalFeatures: number | undefined;
-  let fetchedAt = new Date().toISOString();
-  try {
-    for (let page = 0; page < maxPages && url; page++) {
-      const response = await fetch(url, {
-        signal: AbortSignal.timeout(8000),
-        cache: "no-store",
-      });
-      if (!response.ok)
-        throw new Error("Berlin data service returned an error.");
-      const raw: unknown = await response.json();
-      if (!validCollection(raw))
-        throw new Error("Berlin data service returned an invalid response.");
-      if (typeof raw.totalFeatures === "number")
-        totalFeatures = raw.totalFeatures;
-      if (raw.timeStamp) fetchedAt = raw.timeStamp;
-      features.push(...raw.features);
-      const next = raw.links?.find((link) => link.rel === "next")?.href;
-      if (!next) {
-        url = null;
-        break;
-      }
-      const nextUrl = new URL(next, endpoint);
-      const base = new URL(endpoint);
-      if (nextUrl.origin !== base.origin || nextUrl.pathname !== base.pathname)
-        throw new Error("Berlin data service returned an invalid page link.");
-      url = nextUrl;
-    }
-  } catch (error) {
-    return {
-      features,
-      fetchedAt,
-      failed:
-        error instanceof Error
-          ? error.message
-          : "Berlin data is temporarily unavailable.",
-      incomplete: features.length > 0,
-    };
-  }
-  return {
-    features,
-    fetchedAt,
-    incomplete:
-      !!url || (totalFeatures !== undefined && features.length < totalFeatures),
-  };
-}
-
-function unavailable<T>(message: string | undefined): ContextResult<T> {
-  return {
-    source: {
-      status: "unavailable",
-      message:
-        message ?? "This Berlin data service is temporarily unavailable.",
-    },
-    items: [],
-  };
-}
-
-function sourceResult<T>(
+function createSource<T>(
   matchedCount: number,
   fetchedAt: string,
   incomplete: boolean,
+  items: T[],
   message?: string,
 ): ContextResult<T> {
+  if (incomplete)
+    return {
+      source: {
+        status: "partial",
+        fetchedAt,
+        message:
+          message ??
+          "Some nearby records may be missing because the service page limit was reached.",
+      },
+      items,
+    };
   return {
-    source: incomplete
-      ? {
-          status: "partial",
-          fetchedAt,
-          message:
-            message ??
-            "Some nearby records may be missing because the service page limit was reached.",
-        }
-      : { status: matchedCount ? "available" : "empty", fetchedAt },
-    items: [],
+    source: { status: matchedCount ? "available" : "empty", fetchedAt },
+    items,
   };
 }
 
@@ -193,18 +147,15 @@ export async function getParkingContext(
   const [east, north] = toEpsg25833(longitude, latitude);
   const point: Position = [east, north];
   const [zoneFetch, eventFetch] = await Promise.all([
-    fetchFeatures(
+    fetchWfsFeatures<RawFeature>(
       zoneEndpoint,
-      createParams(
-        "parkraumbewirtschaftung:parkzonen",
-        east,
-        north,
-        radiusMeters,
-      ),
+      wfsParams("parkraumbewirtschaftung:parkzonen", east, north, radiusMeters),
+      validCollection,
     ),
-    fetchFeatures(
+    fetchWfsFeatures<RawFeature>(
       eventEndpoint,
-      createParams("planb_ereignisse:ereignisse", east, north, radiusMeters),
+      wfsParams("planb_ereignisse:ereignisse", east, north, radiusMeters),
+      validCollection,
     ),
   ]);
 
@@ -216,7 +167,9 @@ export async function getParkingContext(
         const p = feature.properties;
         return [
           {
-            id: String(feature.id ?? p.parkzone ?? `${p.bezirk}-${index}`),
+            id: String(
+              feature.id ?? `${p.parkzone ?? p.bezirk ?? "zone"}-${index}`,
+            ),
             zone: text(p.parkzone),
             borough: text(p.bezirk),
             hours: text(p.zeiten),
@@ -266,23 +219,44 @@ export async function getParkingContext(
     })
     .sort((a, b) => a.distanceMeters - b.distanceMeters);
 
-  const zones = sourceResult<ParkingZone>(
-    zoneItems.length,
-    zoneFetch.fetchedAt,
-    zoneFetch.incomplete ?? false,
-    "failed" in zoneFetch ? zoneFetch.failed : undefined,
-  );
-  const events = sourceResult<PlannedEvent>(
-    eventItems.length,
-    eventFetch.fetchedAt,
-    eventFetch.incomplete ?? false,
-    "failed" in eventFetch ? eventFetch.failed : undefined,
-  );
-  zones.items = zoneItems;
-  events.items = eventItems;
-  if ("failed" in zoneFetch && !zoneFetch.features.length)
-    return { zones: unavailable(zoneFetch.failed), events };
-  if ("failed" in eventFetch && !eventFetch.features.length)
-    return { zones, events: unavailable(eventFetch.failed) };
-  return { zones, events };
+  const zoneFailed = "failed" in zoneFetch ? zoneFetch.failed : undefined;
+  const eventFailed = "failed" in eventFetch ? eventFetch.failed : undefined;
+  if (zoneFailed && !zoneFetch.features.length)
+    return {
+      zones: missingContext(zoneFailed).zones,
+      events: createSource(
+        eventItems.length,
+        eventFetch.fetchedAt,
+        eventFetch.incomplete ?? false,
+        eventItems,
+        eventFailed,
+      ),
+    };
+  if (eventFailed && !eventFetch.features.length)
+    return {
+      zones: createSource(
+        zoneItems.length,
+        zoneFetch.fetchedAt,
+        zoneFetch.incomplete ?? false,
+        zoneItems,
+        zoneFailed,
+      ),
+      events: missingContext(eventFailed).events,
+    };
+  return {
+    zones: createSource(
+      zoneItems.length,
+      zoneFetch.fetchedAt,
+      zoneFetch.incomplete ?? false,
+      zoneItems,
+      zoneFailed,
+    ),
+    events: createSource(
+      eventItems.length,
+      eventFetch.fetchedAt,
+      eventFetch.incomplete ?? false,
+      eventItems,
+      eventFailed,
+    ),
+  };
 }
