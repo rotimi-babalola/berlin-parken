@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
+import type { TestContext } from "node:test";
 import { getNearbyParking, toEpsg25833 } from "../src/lib/parking.ts";
 
 const destination = toEpsg25833(13.405, 52.52);
@@ -48,6 +49,18 @@ function collection(features: unknown[], extra: Record<string, unknown> = {}) {
   );
 }
 
+function mockInsideFetch(
+  t: TestContext,
+  handler: (input: string | URL | Request) => Promise<Response>,
+) {
+  t.mock.method(globalThis, "fetch", async (input: string | URL | Request) =>
+    new URL(String(input)).searchParams.get("TYPENAMES") ===
+    "parkplaetze:parkplaetze_aussen"
+      ? collection([], { totalFeatures: 0 })
+      : handler(input),
+  );
+}
+
 test("projects a Berlin coordinate into the EPSG:25833 northing range", () => {
   const [east, north] = toEpsg25833(13.405, 52.52);
 
@@ -55,9 +68,83 @@ test("projects a Berlin coordinate into the EPSG:25833 northing range", () => {
   assert.ok(Math.abs(north - 5820072.16) < 1);
 });
 
+test("combines inside and outside parking with their distinct capacity and restriction fields", async (t) => {
+  const requestedLayers: string[] = [];
+  t.mock.method(globalThis, "fetch", async (input: string | URL | Request) => {
+    const layer = new URL(String(input)).searchParams.get("TYPENAMES")!;
+    requestedLayers.push(layer);
+    if (layer === "parkplaetze:parkplaetze_aussen")
+      return collection([
+        feature(
+          "outside",
+          30,
+          0,
+          3,
+          "Parken (ohne Beschränkungen)",
+          "Outside Street",
+        ),
+      ]);
+    const insideFree = feature("inside-free", 0, 0, 8, "", "Inside Street");
+    const insideRestricted = feature(
+      "inside-restricted",
+      20,
+      0,
+      4,
+      "",
+      "Restricted Street",
+    );
+    Object.assign(insideFree.properties, {
+      errechnete_anzahl_parkplaetze: 8,
+      oeffentliches_strassenland: "Ja",
+      beschraenkung: "",
+      parkgebuehr: "4,00 Euro",
+      strassenname: "Inside Street",
+    });
+    Object.assign(insideRestricted.properties, {
+      errechnete_anzahl_parkplaetze: 4,
+      oeffentliches_strassenland: "Ja",
+      beschraenkung: "Haltverbot",
+      strassenname: "Restricted Street",
+    });
+    return collection([insideFree, insideRestricted]);
+  });
+
+  const result = await getNearbyParking(13.405, 52.52, 100);
+
+  assert.deepEqual(requestedLayers.sort(), [
+    "parkplaetze:parkplaetze",
+    "parkplaetze:parkplaetze_aussen",
+  ]);
+  assert.equal(result.status, "available");
+  assert.equal(result.featureCount, 3);
+  assert.equal(result.mappedSpaces, 15);
+  assert.equal(result.usableSpaces, 3);
+  assert.equal(result.conditionalSpaces, 8);
+  assert.equal(result.restrictedSpaces, 4);
+  assert.deepEqual(
+    result.streets.map(({ name }) => name),
+    ["Inside Street", "Outside Street"],
+  );
+});
+
+test("marks results partial when one parking layer fails", async (t) => {
+  t.mock.method(globalThis, "fetch", async (input: string | URL | Request) =>
+    new URL(String(input)).searchParams.get("TYPENAMES") ===
+    "parkplaetze:parkplaetze_aussen"
+      ? new Response("unavailable", { status: 503 })
+      : collection([feature("inside", 0, 0, 5, "", "Inside Street")]),
+  );
+
+  const result = await getNearbyParking(13.405, 52.52, 100);
+
+  assert.equal(result.status, "partial");
+  assert.equal(result.mappedSpaces, 5);
+  assert.match(result.message ?? "", /error/);
+});
+
 test("requests a bounded EPSG:25833 box and filters features to the circular radius", async (t) => {
   let requestedUrl = "";
-  t.mock.method(globalThis, "fetch", async (input: string | URL | Request) => {
+  mockInsideFetch(t, async (input) => {
     requestedUrl = String(input);
     return collection(
       [
@@ -95,10 +182,7 @@ test("requests a bounded EPSG:25833 box and filters features to the circular rad
   const bbox = url.searchParams.get("BBOX")?.split(",");
 
   assert.equal(url.searchParams.get("COUNT"), "500");
-  assert.equal(
-    url.searchParams.get("TYPENAMES"),
-    "parkplaetze:parkplaetze_aussen",
-  );
+  assert.equal(url.searchParams.get("TYPENAMES"), "parkplaetze:parkplaetze");
   assert.equal(bbox?.[4], "EPSG:25833");
   assert.ok(Math.abs(Number(bbox?.[0]) - (destination[0] - 100)) < 0.001);
   assert.ok(Math.abs(Number(bbox?.[3]) - (destination[1] + 100)) < 0.001);
@@ -111,7 +195,7 @@ test("requests a bounded EPSG:25833 box and filters features to the circular rad
 });
 
 test("aggregates mapped capacity by usability and street, preserving unknown categories", async (t) => {
-  t.mock.method(globalThis, "fetch", async () =>
+  mockInsideFetch(t, async () =>
     collection(
       [
         feature(
@@ -158,7 +242,7 @@ test("aggregates mapped capacity by usability and street, preserving unknown cat
 });
 
 test("excludes prohibited features from street candidates but keeps them in supply totals", async (t) => {
-  t.mock.method(globalThis, "fetch", async () =>
+  mockInsideFetch(t, async () =>
     collection(
       [
         feature("ok", 0, 0, 10, "Parken (ohne Beschränkungen)", "Good Street"),
@@ -180,16 +264,13 @@ test("excludes prohibited features from street candidates but keeps them in supp
 });
 
 test("distinguishes a successful empty response from an upstream failure", async (t) => {
-  t.mock.method(globalThis, "fetch", async () =>
-    collection([], { totalFeatures: 0 }),
-  );
+  mockInsideFetch(t, async () => collection([], { totalFeatures: 0 }));
   const empty = await getNearbyParking(13.405, 52.52, 500);
   assert.equal(empty.status, "empty");
   assert.equal(empty.mappedSpaces, 0);
 
-  t.mock.method(
-    globalThis,
-    "fetch",
+  mockInsideFetch(
+    t,
     async () => new Response("upstream unavailable", { status: 503 }),
   );
   const unavailable = await getNearbyParking(13.405, 52.52, 500);
@@ -199,7 +280,7 @@ test("distinguishes a successful empty response from an upstream failure", async
 
 test("keeps valid first-page results marked partial when a later page fails", async (t) => {
   let pages = 0;
-  t.mock.method(globalThis, "fetch", async () => {
+  mockInsideFetch(t, async () => {
     pages += 1;
     return pages === 1
       ? collection(
@@ -236,7 +317,7 @@ test("keeps valid first-page results marked partial when a later page fails", as
 
 test("includes features returned on a valid next page", async (t) => {
   let pages = 0;
-  t.mock.method(globalThis, "fetch", async () => {
+  mockInsideFetch(t, async () => {
     pages += 1;
     return pages === 1
       ? collection(
@@ -285,7 +366,7 @@ test("includes features returned on a valid next page", async (t) => {
 
 test("does not follow a next-page link to another host", async (t) => {
   let pages = 0;
-  t.mock.method(globalThis, "fetch", async () => {
+  mockInsideFetch(t, async () => {
     pages += 1;
     return collection(
       [
@@ -314,7 +395,7 @@ test("does not follow a next-page link to another host", async (t) => {
 
 test("stops pagination at the configured page budget and marks results partial", async (t) => {
   let pages = 0;
-  t.mock.method(globalThis, "fetch", async () => {
+  mockInsideFetch(t, async () => {
     pages += 1;
     return collection(
       [
@@ -352,7 +433,7 @@ test("stops pagination at the configured page budget and marks results partial",
 });
 
 test("marks malformed feature responses unavailable instead of reporting zero supply", async (t) => {
-  t.mock.method(globalThis, "fetch", async () =>
+  mockInsideFetch(t, async () =>
     collection([{ type: "Feature", properties: {} }]),
   );
 
@@ -363,7 +444,7 @@ test("marks malformed feature responses unavailable instead of reporting zero su
 });
 
 test("rejects malformed coordinate nesting without throwing during radius filtering", async (t) => {
-  t.mock.method(globalThis, "fetch", async () =>
+  mockInsideFetch(t, async () =>
     collection([
       {
         type: "Feature",
