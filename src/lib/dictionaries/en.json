@@ -6,6 +6,7 @@
   "intro.lede": "Explore mapped street parking, paid zones and planned events around your destination.",
   "footer.tagline": "Designed for getting there, not circling the block.",
   "footer.notice": "Data guidance only · Always follow local signs",
+  "footer.contact": "Contact me",
   "search.title": "Where are you going?",
   "search.subtitle": "Choose a destination in Berlin to see the streets around it.",
   "search.addressLabel": "Destination address",

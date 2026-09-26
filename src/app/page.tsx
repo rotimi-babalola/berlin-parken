@@ -41,6 +41,7 @@ export default function Home() {
         <footer className={styles.footer}>
           <span>{t("footer.tagline")}</span>
           <span>{t("footer.notice")}</span>
+          <a href="mailto:rotimi.projects@proton.me">{t("footer.contact")}</a>
         </footer>
       </div>
     </main>

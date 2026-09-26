@@ -118,6 +118,9 @@
   color: var(--muted);
   font-size: 10px;
 }
+.footer a {
+  color: inherit;
+}
 @media (max-width: 760px) {
   .header {
     height: 64px;
