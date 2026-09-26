@@ -73,11 +73,11 @@ Tasks are ordered by dependency. See [plan.md](plan.md) for design choices, deta
 
 **Acceptance criteria:**
 
-- [ ] Managed-zone intersection and available details are displayed with the on-site-signage caveat.
-- [ ] Relevant planned events show type/date/distance where available.
-- [ ] No matching events differs from unavailable data; the event feed's 14-day start horizon is disclosed.
+- [x] Managed-zone intersection and available details are displayed with the on-site-signage caveat.
+- [x] Relevant planned events show type/date/distance where available.
+- [x] No matching events differs from unavailable data; the event feed's 14-day start horizon is disclosed.
 
-**Verification:** Check intersecting/non-intersecting geometries, event time filtering, and independent service failures.
+**Verification:** Focused parking-context tests cover intersecting/non-intersecting geometries, event time filtering, and independent service failures. The browser result shows zone and event sections with source caveats.
 
 **Dependencies:** Tasks 1–3
 
@@ -91,12 +91,12 @@ Tasks are ordered by dependency. See [plan.md](plan.md) for design choices, deta
 
 **Acceptance criteria:**
 
-- [ ] Result includes destination, radius, mapped supply/restrictions, zone status, street candidates, distances, and source-backed reasons.
-- [ ] Suggested street candidates exclude prohibited features and are based on distinct nearby streets.
-- [ ] Any supply difficulty label is explained; uncalibrated probability/search-time estimates and unsupported garage recommendations are omitted.
-- [ ] Source attribution, freshness, limitations, and no-result states are visible.
+- [x] Result includes destination, radius, mapped supply/restrictions, zone status, street candidates, distances, and source-backed reasons.
+- [x] Suggested street candidates exclude prohibited features and are based on distinct nearby streets.
+- [x] Any supply difficulty label is explained; uncalibrated probability/search-time estimates and unsupported garage recommendations are omitted.
+- [x] Source attribution, freshness, limitations, and no-result states are visible.
 
-**Verification:** Manually review an event-free result and a managed-zone/current-event result; trace every displayed reason to source data or an explicit estimate label.
+**Verification:** Unit checks cover supply bands and candidate eligibility. Playwright walkthroughs cover an event-free result and a managed-zone/event result with mocked services. `docs/result-contract.md` records the estimate thresholds and candidate rules.
 
 **Dependencies:** Tasks 2–4
 
@@ -106,9 +106,9 @@ Tasks are ordered by dependency. See [plan.md](plan.md) for design choices, deta
 
 ### Checkpoint: After Tasks 3–5
 
-- [ ] Sparse and dense/managed Berlin searches produce coherent complete results.
-- [ ] Event horizon and freshness limitations are visible.
-- [ ] Every result is traceable to data; unsupported predictions are not presented as fact.
+- [x] Sparse and dense/managed Berlin searches produce coherent complete results.
+- [x] Event horizon and freshness limitations are visible.
+- [x] Every result is traceable to data; unsupported predictions are not presented as fact.
 
 ## Phase 3: Reliability and release
 
@@ -118,11 +118,11 @@ Tasks are ordered by dependency. See [plan.md](plan.md) for design choices, deta
 
 **Acceptance criteria:**
 
-- [ ] Timeouts, rate limits, malformed payloads, and partial WFS results do not break search.
-- [ ] Required secrets remain server-side and setup is documented.
+- [x] Timeouts, rate limits, malformed payloads, and partial WFS results do not break search.
+- [x] Required secrets remain server-side and setup is documented.
 - [ ] Search and results remain keyboard-accessible and usable on narrow screens.
 
-**Verification:** Run established project checks/build and manually inspect provider failures and keyboard-only use.
+**Verification so far:** `pnpm test` (31 Node tests and 9 component tests), `pnpm lint`, `pnpm exec tsc --noEmit`, and `pnpm build` pass. Four Playwright checks pass with installed Chrome on an isolated local port, including keyboard selection, retry after a mocked failure, and overflow checks at 320/768/1,440 px. Screenshots at 320 and 1,440 px were visually reviewed. Manual screen-reader review remains open.
 
 **Dependencies:** Tasks 2–5
 

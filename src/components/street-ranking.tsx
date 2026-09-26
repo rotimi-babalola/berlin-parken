@@ -15,32 +15,34 @@ export function StreetRanking({
   if (!streets.length)
     return (
       <div className={styles.streetList}>
-        <strong>{t("streets.title")}</strong>
+        <h4>{t("streets.title")}</h4>
         <p>{t("streets.empty")}</p>
       </div>
     );
   return (
     <div className={styles.streetList}>
-      <strong>{t("streets.title")}</strong>
-      {streets.slice(0, 3).map((street, index) => (
-        <p key={street.name}>
-          <span className={styles.rank} aria-hidden="true">
-            {ROMAN[index] ?? `${index + 1}.`}
-          </span>
-          <span>
-            {street.name}
-            <span className={styles.streetMeta}>
-              {t("streets.meta", {
-                spaces: street.mappedSpaces.toLocaleString(locale),
-                distance: street.nearestMeters,
-              })}
+      <h4>{t("streets.title")}</h4>
+      <ol role="list">
+        {streets.slice(0, 3).map((street, index) => (
+          <li key={street.name}>
+            <span className={styles.rank} aria-hidden="true">
+              {ROMAN[index] ?? `${index + 1}.`}
             </span>
-          </span>
-          <span className={styles.streetCount}>
-            {street.mappedSpaces.toLocaleString(locale)}
-          </span>
-        </p>
-      ))}
+            <span>
+              {street.name}
+              <span className={styles.streetMeta}>
+                {t("streets.meta", {
+                  spaces: street.mappedSpaces.toLocaleString(locale),
+                  distance: street.nearestMeters,
+                })}
+              </span>
+            </span>
+            <span className={styles.streetCount} aria-hidden="true">
+              {street.mappedSpaces.toLocaleString(locale)}
+            </span>
+          </li>
+        ))}
+      </ol>
       <p className={styles.sourceNote}>{t("streets.note")}</p>
     </div>
   );

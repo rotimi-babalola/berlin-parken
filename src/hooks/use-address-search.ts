@@ -100,23 +100,18 @@ export function useAddressSearch() {
     }
   }
 
-  function handleSubmit(event: SubmitEvent<HTMLFormElement>) {
-    event.preventDefault();
-    if (!selected) {
-      setSubmitError(true);
-      inputRef.current?.focus();
-      return;
-    }
+  function loadParking(destination: AddressSuggestion, radiusMeters: number) {
     cancelParkingRequest();
     const controller = new AbortController();
     parkingRequest.current = controller;
-    setSearchReady({ destination: selected, radiusMeters: radius });
+    const timeout = window.setTimeout(() => controller.abort(), 25_000);
+    setSearchReady({ destination, radiusMeters });
     setParking(null);
     setParkingLoading(true);
     const params = new URLSearchParams({
-      longitude: String(selected.longitude),
-      latitude: String(selected.latitude),
-      radius: String(radius),
+      longitude: String(destination.longitude),
+      latitude: String(destination.latitude),
+      radius: String(radiusMeters),
     });
     fetch(`/api/parking?${params}`, { signal: controller.signal })
       .then(async (response) => {
@@ -160,11 +155,22 @@ export function useAddressSearch() {
         });
       })
       .finally(() => {
+        window.clearTimeout(timeout);
         if (parkingRequest.current === controller) {
           parkingRequest.current = null;
           setParkingLoading(false);
         }
       });
+  }
+
+  function handleSubmit(event: SubmitEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (!selected) {
+      setSubmitError(true);
+      inputRef.current?.focus();
+      return;
+    }
+    loadParking(selected, radius);
   }
 
   let liveMessage = "";
@@ -210,6 +216,10 @@ export function useAddressSearch() {
       setSuggestionsDismissed(false);
       inputRef.current?.focus();
       retry();
+    },
+    retryParking: () => {
+      if (searchReady)
+        loadParking(searchReady.destination, searchReady.radiusMeters);
     },
   };
 }

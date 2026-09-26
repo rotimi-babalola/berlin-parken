@@ -113,6 +113,9 @@ describe("AddressSearch", () => {
     for (const street of ["Torstraße", "Linienstraße", "Gormannstraße"]) {
       expect(within(results).getByText(street)).toBeTruthy();
     }
+    expect(
+      within(within(results).getByRole("list")).getAllByRole("listitem"),
+    ).toHaveLength(3);
     expect(within(results).getByText(/120 m away/)).toBeTruthy();
   });
 
@@ -178,6 +181,60 @@ describe("AddressSearch", () => {
     await screen.findByRole("option", { name: /Alexanderplatz 1/ });
     expect(fetchMock).toHaveBeenCalledTimes(2);
     expect(requestedUrls[0]).toBe(requestedUrls[1]);
+  });
+
+  it("retries a failed parking request with the selected destination and radius", async () => {
+    const parkingUrls: string[] = [];
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async (input: RequestInfo | URL) => {
+        const url = String(input);
+        if (url.startsWith("/api/geocode?"))
+          return {
+            ok: true,
+            json: async () => ({ suggestions: [suggestions[0]] }),
+          };
+        parkingUrls.push(url);
+        return parkingUrls.length === 1
+          ? { ok: false, json: async () => ({}) }
+          : {
+              ok: true,
+              json: async () => ({
+                status: "empty",
+                mappedSpaces: 0,
+                usableSpaces: 0,
+                conditionalSpaces: 0,
+                restrictedSpaces: 0,
+                unknownSpaces: 0,
+                featureCount: 0,
+                streets: [],
+              }),
+            };
+      }),
+    );
+
+    render(<AddressSearch />);
+    fireEvent.change(
+      screen.getByRole("combobox", { name: "Destination address" }),
+      {
+        target: { value: "Alexanderplatz" },
+      },
+    );
+    fireEvent.click(
+      await screen.findByRole("option", { name: /Alexanderplatz 1/ }),
+    );
+    fireEvent.click(
+      screen.getByRole("button", { name: "Check nearby streets" }),
+    );
+    fireEvent.click(
+      await screen.findByRole("button", { name: "Retry parking search" }),
+    );
+
+    await screen.findByText(
+      "No mapped parking areas were returned for this radius.",
+    );
+    expect(parkingUrls).toHaveLength(2);
+    expect(parkingUrls[0]).toBe(parkingUrls[1]);
   });
 
   it("does not select an arbitrary result when Enter is pressed without an active option", async () => {

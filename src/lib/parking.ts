@@ -224,7 +224,7 @@ function validPolygon(value: unknown): value is Polygon {
   return Array.isArray(value) && value.length > 0 && value.every(validRing);
 }
 
-function validGeometry(value: Geometry): boolean {
+export function validGeometry(value: Geometry): boolean {
   if (value.type === "Polygon") return validPolygon(value.coordinates);
   return (
     value.type === "MultiPolygon" &&
@@ -334,9 +334,9 @@ function summarize(
     else if (usability === "conditional") result.conditionalSpaces += capacity;
     else if (usability === "restricted") result.restrictedSpaces += capacity;
     else result.unknownSpaces += capacity;
-    // ponytail: candidates skip restricted (incl. Parkverbot) features;
-    // revisit if per-street usability mix needs ranking weight.
-    if (usability === "restricted") continue;
+    // Only mapped usable or conditional capacity can support a street suggestion.
+    if ((usability !== "usable" && usability !== "conditional") || !capacity)
+      continue;
     const name = String(properties.strassenname ?? "").trim();
     if (name && feature.geometry) {
       const rounded = Math.round(geometryDistance(point, feature.geometry));
