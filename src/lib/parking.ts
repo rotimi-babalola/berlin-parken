@@ -163,6 +163,26 @@ function classify(category: string, publicLand: string): ParkingUsability {
   return "unknown";
 }
 
+function classifyInside(properties: Record<string, unknown>): ParkingUsability {
+  if (properties.oeffentliches_strassenland !== "Ja") return "restricted";
+  if (
+    properties.nur_schwerbehinderte === "ja" ||
+    properties.carsharing === "ja"
+  )
+    return "restricted";
+  if (properties.beschraenkung || properties.grund_fuer_beschraenkung)
+    return properties.geltungszeit_der_beschraenkung
+      ? "conditional"
+      : "restricted";
+  if (
+    properties.parkgebuehr ||
+    properties.hoechstparkdauer ||
+    properties.geltungszeit_der_beschraenkung
+  )
+    return "conditional";
+  return "usable";
+}
+
 function validCollection(value: unknown): value is FeatureCollection {
   if (!value || typeof value !== "object") return false;
   const collection = value as FeatureCollection;
@@ -231,40 +251,37 @@ export async function getNearbyParking(
     streets: [],
   });
   const [east, north] = toEpsg25833(longitude, latitude);
-  const params = wfsParams(
-    "parkplaetze:parkplaetze_aussen",
-    east,
-    north,
-    radiusMeters,
+  const layers = ["parkplaetze:parkplaetze", "parkplaetze:parkplaetze_aussen"];
+  const results = await Promise.all(
+    layers.map((layer) =>
+      fetchWfsFeatures<Feature>(
+        endpoint,
+        wfsParams(layer, east, north, radiusMeters),
+        validCollection,
+      ),
+    ),
   );
-  const fetched = await fetchWfsFeatures<Feature>(
-    endpoint,
-    params,
-    validCollection,
+  const features = results.flatMap((result) => result.features);
+  const fetchedAt = results
+    .map((result) => result.fetchedAt)
+    .sort()
+    .at(-1)!;
+  const failed = results.find((result) => "failed" in result);
+  if (failed && !features.length) return unavailable(failed.failed);
+  const incomplete = results.some(
+    (result) => "failed" in result || result.incomplete,
   );
-  const { features, fetchedAt } = fetched;
-  if ("failed" in fetched) {
-    return features.length
-      ? summarize(
-          features,
-          [east, north],
-          radiusMeters,
-          fetchedAt,
-          true,
-          fetched.failed,
-        )
-      : unavailable(fetched.failed);
-  }
-
   return summarize(
     features,
     [east, north],
     radiusMeters,
     fetchedAt,
-    fetched.incomplete,
-    fetched.incomplete
-      ? "Some nearby records may be missing because the service page limit was reached."
-      : undefined,
+    incomplete,
+    failed
+      ? failed.failed
+      : incomplete
+        ? "Some nearby records may be missing because the service page limit was reached."
+        : undefined,
   );
 }
 
@@ -299,12 +316,19 @@ function summarize(
   >();
   for (const feature of features) {
     const properties = feature.properties;
-    const spaces = Number(properties.anzahl_parkplaetze);
-    const capacity = Number.isFinite(spaces) && spaces > 0 ? spaces : 0;
-    const usability = classify(
-      String(properties.category ?? ""),
-      String(properties.oeffentlichesstrassenland ?? ""),
+    const inside = "errechnete_anzahl_parkplaetze" in properties;
+    const spaces = Number(
+      inside
+        ? properties.errechnete_anzahl_parkplaetze
+        : properties.anzahl_parkplaetze,
     );
+    const capacity = Number.isFinite(spaces) && spaces > 0 ? spaces : 0;
+    const usability = inside
+      ? classifyInside(properties)
+      : classify(
+          String(properties.category ?? ""),
+          String(properties.oeffentlichesstrassenland ?? ""),
+        );
     result.mappedSpaces += capacity;
     if (usability === "usable") result.usableSpaces += capacity;
     else if (usability === "conditional") result.conditionalSpaces += capacity;

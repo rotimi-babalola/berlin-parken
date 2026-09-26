@@ -15,7 +15,8 @@ Checked against live WFS capabilities, schemas, and bounded GeoJSON queries on 2
 
 - Catalog: [Parken im Straßenraum – Berlin Open Data](https://daten.berlin.de/datensaetze/parken-im-strassenraum-wfs-2eb40df3)
 - WFS: `https://gdi.berlin.de/services/wfs/parkplaetze`
-- Outdoor layer: `parkplaetze:parkplaetze_aussen`; another layer, `parkplaetze:parkplaetze`, is also listed.
+- Query both layers for each search box: `parkplaetze:parkplaetze` covers streets inside the S-Bahn ring and `parkplaetze:parkplaetze_aussen` covers streets outside it. A search radius can cross the ring, and the advertised layer bounding boxes do not define its boundary. The service rejected a combined `TYPENAMES` request, so fetch each layer separately.
+- The layers have different capacity and restriction fields. Inside uses `errechnete_anzahl_parkplaetze`, `oeffentliches_strassenland`, `beschraenkung`, `grund_fuer_beschraenkung`, `geltungszeit_der_beschraenkung`, `parkgebuehr`, and `hoechstparkdauer`; outside uses `anzahl_parkplaetze`, `oeffentlichesstrassenland`, and `category`. An inside stopping or loading restriction with stated hours is conditional; one without stated hours is treated as restricted. Reserved spaces remain restricted.
 - Relevant schema fields: `polygonid`, `strassenname`, `zone`, `anzahl_parkplaetze`, `category`, `oeffentlichesstrassenland`, `geltungszeit_ladezone`, `ladezone_einschraenkungen`, and `geom` (MultiSurface).
 - Observed categories in the supplied project brief include unrestricted parking, parking bans, time-limited parking, limited duration, user-group parking, and loading zones. Keep unknown categories separate rather than assuming availability.
 - Verification sample: a 200 m × 300 m bounding box in Treptow-Köpenick returned HTTP 200, 39 matching features, one requested feature with capacity 63, street name, category, zone, geometry, and a `next` link.
