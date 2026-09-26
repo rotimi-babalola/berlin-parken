@@ -14,7 +14,7 @@ export function AssessmentCard({
   conditional: number;
   restricted: number;
 }) {
-  const { t } = useLocale();
+  const { t, locale } = useLocale();
   const assessment = assessSupply(mappedSpaces);
   const label = t(
     assessment.step === 1
@@ -47,9 +47,9 @@ export function AssessmentCard({
       </div>
       <p className={styles.assessmentNote}>
         {t("assessment.note", {
-          usable: usable.toLocaleString(),
-          conditional: conditional.toLocaleString(),
-          restricted: restricted.toLocaleString(),
+          usable: usable.toLocaleString(locale),
+          conditional: conditional.toLocaleString(locale),
+          restricted: restricted.toLocaleString(locale),
         })}
       </p>
     </div>

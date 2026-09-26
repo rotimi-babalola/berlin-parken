@@ -9,7 +9,7 @@ export function EventSection({
 }: {
   events: ContextResult<PlannedEvent>;
 }) {
-  const { t } = useLocale();
+  const { t, locale } = useLocale();
   return (
     <section className={styles.parkingResult} aria-labelledby="events-title">
       <h3 id="events-title">{t("events.title")}</h3>
@@ -38,7 +38,7 @@ export function EventSection({
         </a>
         {events.source.status !== "unavailable"
           ? ` · ${t("results.retrieved", {
-              date: new Date(events.source.fetchedAt).toLocaleString(),
+              date: new Date(events.source.fetchedAt).toLocaleString(locale),
             })}`
           : ""}
       </p>

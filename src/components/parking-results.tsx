@@ -19,7 +19,7 @@ type Props = {
 // Stateful data lives in useAddressSearch; this file only renders props.
 // Zones/events render in the side rail via ZoneSection/EventSection.
 export function ParkingResults({ search, parking, loading }: Props) {
-  const { t } = useLocale();
+  const { t, locale } = useLocale();
   if (!search) return null;
   const radius =
     search.radiusMeters < 1000 ? `${search.radiusMeters} m` : "1 km";
@@ -64,7 +64,7 @@ export function ParkingResults({ search, parking, loading }: Props) {
               <div className={styles.report}>
                 <div className={styles.reportMain}>
                   <p className={styles.capacity}>
-                    {parking.mappedSpaces.toLocaleString()}{" "}
+                    {parking.mappedSpaces.toLocaleString(locale)}{" "}
                     <span>
                       {t("results.capacitySuffix", {
                         count: parking.featureCount,
@@ -108,7 +108,7 @@ export function ParkingResults({ search, parking, loading }: Props) {
               </a>
               {parking.fetchedAt
                 ? ` ${t("results.retrieved", {
-                    date: new Date(parking.fetchedAt).toLocaleString(),
+                    date: new Date(parking.fetchedAt).toLocaleString(locale),
                   })}`
                 : ""}
             </p>

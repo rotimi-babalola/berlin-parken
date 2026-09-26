@@ -11,7 +11,7 @@ export function StreetRanking({
 }: {
   streets: ParkingSummary["streets"];
 }) {
-  const { t } = useLocale();
+  const { t, locale } = useLocale();
   if (!streets.length)
     return (
       <div className={styles.streetList}>
@@ -31,13 +31,13 @@ export function StreetRanking({
             {street.name}
             <span className={styles.streetMeta}>
               {t("streets.meta", {
-                spaces: street.mappedSpaces.toLocaleString(),
+                spaces: street.mappedSpaces.toLocaleString(locale),
                 distance: street.nearestMeters,
               })}
             </span>
           </span>
           <span className={styles.streetCount}>
-            {street.mappedSpaces.toLocaleString()}
+            {street.mappedSpaces.toLocaleString(locale)}
           </span>
         </p>
       ))}

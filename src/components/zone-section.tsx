@@ -4,7 +4,7 @@ import styles from "./address-search.module.css";
 
 // Dumb: managed-zone guidance.
 export function ZoneSection({ zones }: { zones: ContextResult<ParkingZone> }) {
-  const { t } = useLocale();
+  const { t, locale } = useLocale();
   return (
     <section className={styles.parkingResult} aria-labelledby="zones-title">
       <h3 id="zones-title">{t("zones.title")}</h3>
@@ -50,7 +50,7 @@ export function ZoneSection({ zones }: { zones: ContextResult<ParkingZone> }) {
         </a>
         {zones.source.status !== "unavailable"
           ? ` · ${t("results.retrieved", {
-              date: new Date(zones.source.fetchedAt).toLocaleString(),
+              date: new Date(zones.source.fetchedAt).toLocaleString(locale),
             })}`
           : ""}
       </p>
