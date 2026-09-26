@@ -169,3 +169,58 @@ test("requires selecting an address suggestion before searching", async ({
     page.getByRole("combobox", { name: "Destination address" }),
   ).toHaveAttribute("aria-invalid", "true");
 });
+
+test("recovers from a failed parking request with keyboard use on narrow screens", async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 320, height: 800 });
+  let requests = 0;
+  await page.route("**/api/parking?**", async (route) => {
+    requests += 1;
+    await route.fulfill(
+      requests === 1
+        ? { status: 503, json: { error: "Provider busy" } }
+        : {
+            json: {
+              status: "empty",
+              mappedSpaces: 0,
+              usableSpaces: 0,
+              conditionalSpaces: 0,
+              restrictedSpaces: 0,
+              unknownSpaces: 0,
+              featureCount: 0,
+              streets: [],
+            },
+          },
+    );
+  });
+
+  await page.goto("/");
+  const address = page.getByRole("combobox", { name: "Destination address" });
+  await address.fill("Alexanderplatz");
+  await expect(
+    page.getByRole("option", { name: /Alexanderplatz 1/ }),
+  ).toBeVisible();
+  await address.press("ArrowDown");
+  await address.press("Enter");
+  await page.getByRole("button", { name: "Check nearby streets" }).click();
+  const retry = page.getByRole("button", { name: "Retry parking search" });
+  await expect(retry).toBeVisible();
+  await retry.focus();
+  await retry.press("Enter");
+  await expect(
+    page.getByText("No mapped parking areas were returned for this radius."),
+  ).toBeVisible();
+  expect(requests).toBe(2);
+  for (const width of [320, 768, 1440]) {
+    await page.setViewportSize({ width, height: 800 });
+    expect(
+      await page.evaluate(() => document.documentElement.scrollWidth),
+    ).toBeLessThanOrEqual(width);
+    if (process.env.CAPTURE_VISUALS)
+      await page.screenshot({
+        path: `test-results/parking-${width}.png`,
+        fullPage: true,
+      });
+  }
+});

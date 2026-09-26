@@ -13,12 +13,13 @@ type Props = {
   search: SearchReady | null;
   parking: (ParkingSummary & Partial<ParkingContext>) | null;
   loading: boolean;
+  onRetry: () => void;
 };
 
 // Dumb composition: Bescheid supply report (centre rail aria-hidden).
 // Stateful data lives in useAddressSearch; this file only renders props.
 // Zones/events render in the side rail via ZoneSection/EventSection.
-export function ParkingResults({ search, parking, loading }: Props) {
+export function ParkingResults({ search, parking, loading, onRetry }: Props) {
   const { t, locale } = useLocale();
   if (!search) return null;
   const radius =
@@ -53,9 +54,12 @@ export function ParkingResults({ search, parking, loading }: Props) {
             <span className={styles.skeleton} aria-hidden="true" />
           </div>
         ) : parking?.status === "unavailable" ? (
-          <p role="status">
-            {t("results.unavailablePrefix")} {parking.message}
-          </p>
+          <div role="status">
+            <p>{t("results.unavailablePrefix")}</p>
+            <button className={styles.retry} type="button" onClick={onRetry}>
+              {t("results.retry")}
+            </button>
+          </div>
         ) : parking ? (
           <>
             {parking.status === "empty" ? (

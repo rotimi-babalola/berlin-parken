@@ -75,6 +75,7 @@ export function AddressSearch() {
           search={search.searchReady}
           parking={search.parking}
           loading={search.parkingLoading}
+          onRetry={search.retryParking}
         />
       </section>
       <aside className={styles.sideRail} aria-label={t("context.asideLabel")}>

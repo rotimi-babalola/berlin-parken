@@ -454,10 +454,17 @@
 .streetList {
   margin-top: 14px;
 }
-.streetList strong {
+.streetList h4 {
+  margin: 0;
   color: var(--ink);
+  font-size: 12px;
 }
-.streetList p {
+.streetList ol {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.streetList li {
   display: flex;
   align-items: baseline;
   gap: 10px;

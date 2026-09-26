@@ -132,6 +132,38 @@ test("keeps the working service when the other one fails", async (t) => {
   assert.equal(result.events.items.length, 1);
 });
 
+test("marks both context sources unavailable when both providers fail", async (t) => {
+  t.mock.method(
+    globalThis,
+    "fetch",
+    async () => new Response("busy", { status: 429 }),
+  );
+
+  const result = await getParkingContext(13.405, 52.52, 500);
+  assert.equal(result.zones.source.status, "unavailable");
+  assert.equal(result.events.source.status, "unavailable");
+});
+
+test("does not treat malformed zone geometry as an empty zone result", async (t) => {
+  t.mock.method(globalThis, "fetch", async (input: string | URL | Request) =>
+    String(input).includes("parkraumbewirtschaftung")
+      ? collection([
+          {
+            ...zoneFeature("bad", 0, 0),
+            geometry: {
+              type: "Polygon",
+              coordinates: [[east, north]],
+            },
+          },
+        ])
+      : collection([]),
+  );
+
+  const result = await getParkingContext(13.405, 52.52, 500);
+  assert.equal(result.zones.source.status, "unavailable");
+  assert.equal(result.events.source.status, "empty");
+});
+
 test("marks results partial when the page budget is reached", async (t) => {
   let zonePages = 0;
   t.mock.method(globalThis, "fetch", async (input: string | URL | Request) => {

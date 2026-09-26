@@ -40,14 +40,14 @@ Repository/stack and provider decisions
 
 - [x] Task 1: Confirm app stack, provider choices, and service contracts
 - [x] Task 2: Deliver destination autocomplete and radius selection
-- [ ] Checkpoint: Address resolves to a Berlin coordinate and radius survives submission
+- [x] Checkpoint: Address resolves to a Berlin coordinate and radius survives submission
 
 ### Phase 2: Data-backed result slices
 
 - [x] Task 3: Show nearby street-parking supply and restrictions
 - [x] Task 4: Show parking-zone status and planned events
-- [ ] Task 5: Present explainable parking guidance and nearby street candidates
-- [ ] Checkpoint: A Berlin address produces a complete result with source limitations visible
+- [x] Task 5: Present explainable parking guidance and nearby street candidates
+- [x] Checkpoint: A Berlin address produces a complete result with source limitations visible
 
 ### Phase 3: Reliability and release
 
@@ -135,12 +135,12 @@ Repository/stack and provider decisions
 
 **Acceptance criteria:**
 
-- [ ] The result presents destination and radius, mapped parking supply/restrictions, zone status, and nearby street candidates with distance and source-backed reasons.
-- [ ] Best and backup areas are derived from distinct eligible nearby street features and never from features classified as prohibited.
-- [ ] Any difficulty band has documented deterministic thresholds and is labelled as an estimate based on mapped supply; no unvalidated chance-of-finding or search-time statistic is presented as fact.
-- [ ] Dataset credits, source/update context, limitations, and useful no-result states are visible.
+- [x] The result presents destination and radius, mapped parking supply/restrictions, zone status, and nearby street candidates with distance and source-backed reasons.
+- [x] Best and backup areas are derived from distinct eligible nearby street features and never from features classified as prohibited.
+- [x] Any difficulty band has documented deterministic thresholds and is labelled as an estimate based on mapped supply; no unvalidated chance-of-finding or search-time statistic is presented as fact.
+- [x] Dataset credits, source/update context, limitations, and useful no-result states are visible.
 
-**Verification:** Walk through the complete search flow for an event-free area and an area with a managed zone and current event; confirm every displayed reason traces to data or is labelled as an estimate.
+**Verification:** `pnpm test` covers supply thresholds and eligible street selection. Playwright covered an event-free result and a managed-zone/event result with mocked services; both show source limitations, and the result copy labels the supply band as an estimate. Thresholds and candidate rules are documented in `docs/result-contract.md`.
 
 **Dependencies:** Tasks 2–4
 
@@ -154,11 +154,11 @@ Repository/stack and provider decisions
 
 **Acceptance criteria:**
 
-- [ ] Geocoder and WFS timeouts, rate limits, malformed payloads, and partial results are handled without breaking the page.
-- [ ] Provider keys, if required, are kept out of client-visible source and documented for local setup.
+- [x] Geocoder and WFS timeouts, rate limits, malformed payloads, and partial results are handled without breaking the page.
+- [x] Provider keys, if required, are kept out of client-visible source and documented for local setup.
 - [ ] Search and result flow meet the project's accessibility conventions and remain usable on narrow screens.
 
-**Verification:** Run the established project checks, inspect the production build, and manually exercise failure states and keyboard-only use.
+**Verification so far:** `pnpm test` (31 Node tests and 9 component tests), `pnpm lint`, `pnpm exec tsc --noEmit`, and `pnpm build` pass. Four Playwright checks pass with installed Chrome on an isolated local port, including keyboard selection, retry after a mocked provider failure, and horizontal-overflow checks at 320, 768, and 1,440 px. Screenshots at 320 and 1,440 px were visually reviewed. Manual screen-reader review remains open.
 
 **Dependencies:** Tasks 2–5
 
@@ -171,14 +171,14 @@ Repository/stack and provider decisions
 ### Checkpoint: After Tasks 1–2
 
 - [x] Provider and data contracts are documented from actual service responses.
-- [ ] A user can select a Berlin destination and radius.
-- [ ] The chosen destination cannot silently fall back to stale coordinates.
+- [x] A user can select a Berlin destination and radius.
+- [x] The chosen destination cannot silently fall back to stale coordinates.
 
 ### Checkpoint: After Tasks 3–5
 
-- [ ] Complete results work for a sparse area and a dense/managed area.
-- [ ] Event data is shown with the dataset's stated time horizon and freshness caveat.
-- [ ] All metrics and reasons are traceable to their source; availability predictions remain explicitly uncalibrated or absent.
+- [x] Complete results work for a sparse area and a dense/managed area.
+- [x] Event data is shown with the dataset's stated time horizon and freshness caveat.
+- [x] All metrics and reasons are traceable to their source; availability predictions remain explicitly uncalibrated or absent.
 
 ### Checkpoint: Complete
 

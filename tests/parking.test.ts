@@ -293,6 +293,51 @@ test("aggregates mapped capacity by usability and street, preserving unknown cat
     result.streets.every(({ name }) => name !== "Restricted Road"),
     "restricted/prohibited streets are excluded from candidates",
   );
+  assert.ok(
+    result.streets.every(({ name }) => name !== "Unknown Road"),
+    "unknown restrictions are excluded from candidates",
+  );
+});
+
+test("does not suggest a street with zero mapped eligible capacity", async (t) => {
+  mockOutsideFetch(t, async () =>
+    collection([
+      feature("zero", 0, 0, 0, "Parken (ohne Beschränkungen)", "Zero Street"),
+    ]),
+  );
+
+  const result = await getNearbyParking(13.405, 52.52, 100);
+  assert.equal(result.featureCount, 1);
+  assert.deepEqual(result.streets, []);
+});
+
+test("reports a rate-limited parking service as unavailable", async (t) => {
+  mockOutsideFetch(t, async () => new Response("busy", { status: 429 }));
+
+  const result = await getNearbyParking(13.405, 52.52, 100);
+  assert.equal(result.status, "unavailable");
+  assert.match(result.message ?? "", /busy/);
+});
+
+test("rejects oversized WFS pages", async (t) => {
+  mockOutsideFetch(t, async () =>
+    collection(
+      Array.from({ length: 501 }, (_, index) =>
+        feature(
+          String(index),
+          0,
+          0,
+          1,
+          "Parken (ohne Beschränkungen)",
+          "Street",
+        ),
+      ),
+    ),
+  );
+
+  const result = await getNearbyParking(13.405, 52.52, 100);
+  assert.equal(result.status, "unavailable");
+  assert.match(result.message ?? "", /page limit/);
 });
 
 test("excludes prohibited features from street candidates but keeps them in supply totals", async (t) => {
@@ -445,6 +490,46 @@ test("does not follow a next-page link to another host", async (t) => {
   assert.equal(pages, 1);
   assert.equal(result.status, "partial");
   assert.equal(result.mappedSpaces, 7);
+});
+
+test("keeps the original bounds and page size on pagination links", async (t) => {
+  let nextUrl: URL | undefined;
+  let pages = 0;
+  mockOutsideFetch(t, async (input) => {
+    pages += 1;
+    if (pages === 2) nextUrl = new URL(String(input));
+    return collection(
+      [
+        feature(
+          String(pages),
+          0,
+          0,
+          1,
+          "Parken (ohne Beschränkungen)",
+          "Street",
+        ),
+      ],
+      pages === 1
+        ? {
+            totalFeatures: 2,
+            links: [
+              {
+                rel: "next",
+                href: "https://gdi.berlin.de/services/wfs/parkplaetze?page=2",
+              },
+            ],
+          }
+        : { totalFeatures: 2 },
+    );
+  });
+
+  await getNearbyParking(13.405, 52.52, 100);
+  assert.equal(nextUrl?.searchParams.get("COUNT"), "500");
+  assert.equal(
+    nextUrl?.searchParams.get("TYPENAMES"),
+    "parkplaetze:parkplaetze_aussen",
+  );
+  assert.ok(nextUrl?.searchParams.get("BBOX")?.endsWith("EPSG:25833"));
 });
 
 test("stops pagination at the configured page budget and marks results partial", async (t) => {

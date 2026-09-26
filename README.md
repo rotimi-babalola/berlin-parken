@@ -1,6 +1,14 @@
 # Berlin Parken
 
-Berlin parking guidance app. The repository is currently at the planning/foundation stage; see [the v1 plan](tasks/plan.md) and [the task checklist](tasks/todo.md).
+Berlin parking guidance app. See [the v1 plan](tasks/plan.md) and [the task checklist](tasks/todo.md).
+
+## Local setup
+
+Run `pnpm install` and `pnpm dev`, then open `http://localhost:3000`. Run `pnpm test`, `pnpm lint`, and `pnpm build` for project checks.
+
+The app uses the public Photon demo by default. To use another Photon instance, set `PHOTON_API_URL` in `.env.local` to its HTTPS API endpoint. This setting is read by the server route; do not prefix it with `NEXT_PUBLIC_`. The current providers require no API keys. Keep any future provider credentials in server-only environment variables and out of source control.
+
+The geocoder request times out after 5 seconds. Each WFS request times out after 8 seconds, with a 20-second total budget per service, at most five pages of 500 features per layer, and a 100–1,000 m search radius. The browser stops waiting after 25 seconds and offers a retry. Partial results remain labelled as partial.
 
 ## Confirmed v1 foundation
 

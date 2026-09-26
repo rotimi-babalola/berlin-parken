@@ -1,6 +1,7 @@
 import {
   geometryDistance,
   toEpsg25833,
+  validGeometry,
   type Geometry,
   type Position,
 } from "./parking.ts";
@@ -93,7 +94,7 @@ function validCollection(value: unknown): value is Collection {
     collection.features.every(
       (feature) =>
         feature?.geometry &&
-        ["Polygon", "MultiPolygon"].includes(feature.geometry.type) &&
+        validGeometry(feature.geometry) &&
         feature.properties &&
         typeof feature.properties === "object",
     )
@@ -221,42 +222,26 @@ export async function getParkingContext(
 
   const zoneFailed = "failed" in zoneFetch ? zoneFetch.failed : undefined;
   const eventFailed = "failed" in eventFetch ? eventFetch.failed : undefined;
-  if (zoneFailed && !zoneFetch.features.length)
-    return {
-      zones: missingContext(zoneFailed).zones,
-      events: createSource(
-        eventItems.length,
-        eventFetch.fetchedAt,
-        eventFetch.incomplete ?? false,
-        eventItems,
-        eventFailed,
-      ),
-    };
-  if (eventFailed && !eventFetch.features.length)
-    return {
-      zones: createSource(
-        zoneItems.length,
-        zoneFetch.fetchedAt,
-        zoneFetch.incomplete ?? false,
-        zoneItems,
-        zoneFailed,
-      ),
-      events: missingContext(eventFailed).events,
-    };
   return {
-    zones: createSource(
-      zoneItems.length,
-      zoneFetch.fetchedAt,
-      zoneFetch.incomplete ?? false,
-      zoneItems,
-      zoneFailed,
-    ),
-    events: createSource(
-      eventItems.length,
-      eventFetch.fetchedAt,
-      eventFetch.incomplete ?? false,
-      eventItems,
-      eventFailed,
-    ),
+    zones:
+      zoneFailed && !zoneFetch.features.length
+        ? missingContext(zoneFailed).zones
+        : createSource(
+            zoneItems.length,
+            zoneFetch.fetchedAt,
+            zoneFetch.incomplete,
+            zoneItems,
+            zoneFailed,
+          ),
+    events:
+      eventFailed && !eventFetch.features.length
+        ? missingContext(eventFailed).events
+        : createSource(
+            eventItems.length,
+            eventFetch.fetchedAt,
+            eventFetch.incomplete,
+            eventItems,
+            eventFailed,
+          ),
   };
 }

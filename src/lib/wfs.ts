@@ -1,5 +1,7 @@
 export const WFS_PAGE_SIZE = 500;
 export const WFS_MAX_PAGES = 5;
+const WFS_TIMEOUT_MS = 8_000;
+const WFS_TOTAL_BUDGET_MS = 20_000;
 
 type WfsCollection<T> = {
   features: T[];
@@ -34,11 +36,21 @@ export function wfsParams(
   });
 }
 
-function nextPageUrl(endpoint: string, href: string): URL {
+function nextPageUrl(
+  endpoint: string,
+  href: string,
+  params: URLSearchParams,
+): URL {
   const nextUrl = new URL(href, endpoint);
   const base = new URL(endpoint);
   if (nextUrl.origin !== base.origin || nextUrl.pathname !== base.pathname)
     throw new Error("Berlin data service returned an invalid page link.");
+  for (const [key, value] of params) {
+    const returned = nextUrl.searchParams.get(key);
+    if (returned !== null && returned !== value)
+      throw new Error("Berlin data service changed the search bounds.");
+    nextUrl.searchParams.set(key, value);
+  }
   return nextUrl;
 }
 
@@ -51,17 +63,26 @@ export async function fetchWfsFeatures<T>(
   const features: T[] = [];
   let totalFeatures: number | undefined;
   let fetchedAt = new Date().toISOString();
+  const deadline = Date.now() + WFS_TOTAL_BUDGET_MS;
   try {
     for (let page = 0; page < WFS_MAX_PAGES && url; page++) {
+      const remainingMs = deadline - Date.now();
+      if (remainingMs <= 0)
+        throw new Error("Berlin data service timed out. Please try again.");
       const response = await fetch(url, {
-        signal: AbortSignal.timeout(8000),
+        signal: AbortSignal.timeout(Math.min(WFS_TIMEOUT_MS, remainingMs)),
         cache: "no-store",
       });
-      if (!response.ok)
+      if (!response.ok) {
+        if (response.status === 429)
+          throw new Error("Berlin data service is busy. Please try again.");
         throw new Error("Berlin data service returned an error.");
+      }
       const raw: unknown = await response.json();
       if (!isValid(raw))
         throw new Error("Berlin data service returned an invalid response.");
+      if (raw.features.length > WFS_PAGE_SIZE)
+        throw new Error("Berlin data service exceeded the page limit.");
       if (typeof raw.totalFeatures === "number")
         totalFeatures = raw.totalFeatures;
       if (raw.timeStamp) fetchedAt = raw.timeStamp;
@@ -71,7 +92,7 @@ export async function fetchWfsFeatures<T>(
         url = null;
         break;
       }
-      url = nextPageUrl(endpoint, next);
+      url = nextPageUrl(endpoint, next, params);
     }
   } catch (error) {
     return {
