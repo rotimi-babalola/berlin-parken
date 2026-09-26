@@ -166,12 +166,14 @@ function classify(category: string, publicLand: string): ParkingUsability {
 function classifyInside(properties: Record<string, unknown>): ParkingUsability {
   if (properties.oeffentliches_strassenland !== "Ja") return "restricted";
   if (
-    properties.beschraenkung ||
-    properties.grund_fuer_beschraenkung ||
     properties.nur_schwerbehinderte === "ja" ||
     properties.carsharing === "ja"
   )
     return "restricted";
+  if (properties.beschraenkung || properties.grund_fuer_beschraenkung)
+    return properties.geltungszeit_der_beschraenkung
+      ? "conditional"
+      : "restricted";
   if (
     properties.parkgebuehr ||
     properties.hoechstparkdauer ||
