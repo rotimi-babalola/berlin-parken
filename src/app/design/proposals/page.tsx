@@ -617,9 +617,9 @@ function Signal({
       <main>
         <section className={styles.signalHero}>
           <div className={styles.signalIntro}>
-            <span className={styles.eyebrow}>BERLIN PARKING / MADE CLEAR</span>
             <h1>
-              Arrive knowing <em>where to look.</em>
+              Arrive knowing <br />
+              <em>where to look.</em>
             </h1>
             <p>
               Search a destination to explore mapped street spaces, parking

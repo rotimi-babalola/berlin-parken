@@ -209,6 +209,20 @@
 .searchLine button span {
   padding-left: 18px;
 }
+.signal .searchLine button span {
+  padding-left: 8px;
+}
+.signal .searchLine input {
+  caret-color: #153f2c;
+}
+.signal .searchLine input::placeholder {
+  color: #506659;
+  opacity: 1;
+}
+.signal ::selection {
+  background: #153f2c;
+  color: #fff;
+}
 .radiusLine {
   display: flex;
   justify-content: space-between;
@@ -362,6 +376,7 @@
 }
 
 .signal {
+  --signal-gutter: clamp(24px, 5vw, 80px);
   background: #eef2e9;
   color: #183127;
   font-family: "Avenir Next", Helvetica, sans-serif;
@@ -373,25 +388,23 @@
 .signalHero {
   display: grid;
   grid-template-columns: 1fr 0.92fr;
-  max-width: 1500px;
-  margin: auto;
   min-height: 555px;
 }
 .signalIntro {
-  padding: clamp(70px, 9vw, 130px) 5vw 65px;
+  padding: clamp(70px, 9vw, 130px) var(--signal-gutter) 65px;
 }
 .signal .eyebrow {
   color: #39754d;
 }
 .signal h1 {
-  max-width: 770px;
-  font-size: clamp(56px, 7vw, 108px);
+  max-width: 520px;
+  font-size: clamp(40px, 4.6vw, 68px);
   letter-spacing: -0.075em;
   line-height: 0.94;
-  margin: 26px 0;
+  margin: 0 0 26px;
 }
 .signal h1 em {
-  color: #f26744;
+  color: #e05a35;
   font-style: normal;
 }
 .signalIntro > p {
@@ -411,11 +424,13 @@
 }
 .signalPanel {
   align-self: center;
-  margin: 45px clamp(24px, 5vw, 80px) 45px 0;
+  margin: 45px var(--signal-gutter) 45px 0;
   background: #f8fbf4;
   border: 1px solid #9eb9a2;
   border-radius: 8px;
-  box-shadow: 16px 16px 0 #d9e4d8;
+  box-shadow:
+    0 1px 2px #203e2914,
+    0 12px 32px #203e2926;
 }
 .signalPanel .panelTop {
   border-bottom: 1px solid #c7d7c8;
@@ -442,9 +457,12 @@
   min-width: 0;
   border-right: 1px solid #b9caba;
 }
+.signalResults > div:last-child {
+  border-right: 0;
+}
 .signalMetric,
 .signalDetails {
-  padding: 31px clamp(24px, 4vw, 56px);
+  padding: 31px var(--signal-gutter);
 }
 .signalMetric > span,
 .signalDetails > span {
@@ -459,6 +477,7 @@
   font-size: clamp(58px, 6vw, 90px);
   line-height: 1;
   letter-spacing: -0.08em;
+  font-variant-numeric: tabular-nums;
 }
 .signalMetric p {
   font-size: 17px;
@@ -480,11 +499,11 @@
   border-bottom: 1px solid #b9caba;
   padding: 15px 0;
 }
-.signalDetails > div:last-child {
-  border: 0;
+.signalDetails > div:last-of-type {
+  border-bottom: 0;
 }
 .signalDetails b {
-  color: #ed6745;
+  color: #b84727;
   font-size: 11px;
   grid-row: span 2;
 }
@@ -494,6 +513,12 @@
 .signalDetails small {
   color: #51685a;
   font-size: 12px;
+}
+.signal .pageHeader,
+.signal .pageFooter,
+.signal .exploreDetails {
+  padding-left: var(--signal-gutter);
+  padding-right: var(--signal-gutter);
 }
 .signal .pageFooter {
   color: #526658;
@@ -921,7 +946,7 @@
 }
 .detailGrid summary {
   display: flex;
-  align-items: center;
+  align-items: flex-end;
   justify-content: space-between;
   gap: 12px;
   min-height: 108px;
@@ -948,13 +973,17 @@
   letter-spacing: -0.035em;
 }
 .detailCount {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding-bottom: 1px;
   color: var(--detail-muted);
   font-size: 12px;
   white-space: nowrap;
 }
 .detailCount b {
-  display: inline-block;
-  margin-left: 4px;
+  display: inline-flex;
+  align-items: center;
   color: var(--detail-accent);
   font-size: 22px;
   line-height: 1;
@@ -1105,10 +1134,12 @@
     display: none;
   }
 }
-@media (max-width: 760px) {
+@media (max-width: 1070px) {
   .detailGrid {
     grid-template-columns: 1fr;
   }
+}
+@media (max-width: 760px) {
   .detailHeading {
     display: block;
   }
@@ -1126,14 +1157,16 @@
     grid-template-columns: 1fr;
   }
   .signalIntro {
-    padding: 65px 24px 28px;
+    padding: 65px var(--signal-gutter) 28px;
   }
-  .signal h1,
+  .signal h1 {
+    font-size: clamp(40px, 9vw, 60px);
+  }
   .night h1 {
     font-size: clamp(54px, 11vw, 82px);
   }
   .signalPanel {
-    margin: 20px 38px 48px 24px;
+    margin: 20px var(--signal-gutter) 48px;
   }
   .signalResults {
     grid-template-columns: 1fr 1fr;
@@ -1143,6 +1176,7 @@
   }
   .signalMap {
     border-bottom: 1px solid #b9caba;
+    border-right: 0;
   }
   .signalDetails {
     grid-column: span 2;
@@ -1221,7 +1255,7 @@
     width: 100%;
   }
   .signal h1 {
-    font-size: clamp(50px, 12vw, 66px);
+    font-size: clamp(36px, 10vw, 52px);
   }
   .signalResults {
     grid-template-columns: 1fr;
@@ -1230,6 +1264,7 @@
   .signalMap,
   .signalDetails {
     grid-column: 1;
+    border-right: 0;
   }
   .signalMap {
     height: 290px;
