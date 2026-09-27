@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { LocaleProvider } from "@/lib/i18n";
+import { Analytics } from "@vercel/analytics/next";
 import "./globals.css";
 
 export const metadata: Metadata = {
@@ -15,6 +16,7 @@ export default function RootLayout({
     <html lang="en">
       <body>
         <LocaleProvider>{children}</LocaleProvider>
+        <Analytics />
       </body>
     </html>
   );
