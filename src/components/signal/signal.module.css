@@ -412,12 +412,14 @@
   text-underline-offset: 4px;
 }
 .emptyResult {
+  grid-column: 1 / -1;
   margin: auto;
   padding: 70px 24px;
   font-size: 17px;
   text-align: center;
 }
 .loadingNote {
+  grid-column: 1 / -1;
   margin: auto;
   padding: 70px 24px;
   font-size: 17px;
