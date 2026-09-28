@@ -4,30 +4,9 @@ import { useState } from "react";
 import type { PlannedEvent } from "@/lib/parking-context";
 import { useLocale } from "@/lib/i18n";
 import styles from "./address-search.module.css";
+import { EventItem } from "./event-item";
 
 const EVENTS_PER_PAGE = 5;
-
-// Dumb: one event row.
-function EventItem({ event }: { event: PlannedEvent }) {
-  const { t } = useLocale();
-  return (
-    <li>
-      <strong>{event.type ?? t("events.defaultType")}</strong>
-      {event.street ? ` · ${event.street}` : ""}
-      {event.borough ? `, ${event.borough}` : ""}
-      {t("events.away", { distance: event.distanceMeters })}
-      {event.startsOn || event.endsOn ? (
-        <div>
-          {event.startsOn ?? t("events.dateUnknown")}
-          {event.endsOn ? ` – ${event.endsOn}` : ""}
-          {event.startTime ? ` · ${event.startTime}` : ""}
-          {event.endTime ? `–${event.endTime}` : ""}
-        </div>
-      ) : null}
-      {event.restriction ? <div>{event.restriction}</div> : null}
-    </li>
-  );
-}
 
 // Dumb: paged event list — 5 per view, prev/next to see more.
 // Page index is local UI state; it resets whenever a new result arrives.

@@ -304,7 +304,6 @@
   font-size: 13px;
 }
 .parkingResult {
-  margin-top: 18px;
   padding-top: 17px;
   border-top: 1px solid var(--line);
   color: var(--muted);
@@ -414,6 +413,7 @@
   border: 2px solid var(--ink);
   border-radius: 2px;
   background: var(--card);
+  margin-block-start: 12px;
 }
 .eyebrow {
   display: block;

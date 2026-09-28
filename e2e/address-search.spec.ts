@@ -38,7 +38,7 @@ test("searches, selects an address, and shows nearby parking", async ({
 
   await page.goto("/");
   await expect(
-    page.getByRole("heading", { name: /Know the streets/ }),
+    page.getByRole("heading", { name: /Arrive knowing/ }),
   ).toBeVisible();
 
   const address = page.getByRole("combobox", { name: "Destination address" });
@@ -52,11 +52,16 @@ test("searches, selects an address, and shows nearby parking", async ({
   await radius.press("ArrowLeft");
   await page.getByRole("button", { name: "Check nearby streets" }).click();
 
-  const results = page.getByRole("region", { name: "Mapped street parking" });
-  await expect(results).toContainText("Alexanderplatz 1");
-  await expect(results).toContainText("42");
-  await expect(results).toContainText("Alexanderstraße");
-  await expect(results).toContainText("30");
+  const strip = page
+    .locator("section")
+    .filter({ hasText: "WHAT YOU CAN CHECK" });
+  await expect(strip).toContainText("Alexanderplatz 1");
+  await expect(strip).toContainText("42");
+  await expect(strip).toContainText("Alexanderstraße");
+  await page.locator("summary", { hasText: "Nearby streets" }).click();
+  await expect(page.getByRole("row", { name: /Unrestricted/ })).toContainText(
+    "30",
+  );
   expect(requestedRadius).toBe("700");
 });
 
@@ -112,27 +117,35 @@ test("shows the Bescheid report, side rail, and event carousel", async ({
   await page.getByRole("option", { name: /Alexanderplatz 1/ }).click();
   await page.getByRole("button", { name: "Check nearby streets" }).click();
 
-  const results = page.getByRole("region", { name: "Mapped street parking" });
-  await expect(results).toContainText("850");
-  await expect(results.getByText("Moderate", { exact: true })).toBeVisible();
+  const strip = page
+    .locator("section")
+    .filter({ hasText: "WHAT YOU CAN CHECK" });
+  await expect(strip).toContainText("850");
+  await expect(strip).toContainText("Torstraße");
+
+  await page.locator("summary", { hasText: "Nearby streets" }).click();
+  const streets = page.locator("details", { hasText: "STREET INVENTORY" });
+  await expect(streets.getByText("Moderate", { exact: true })).toBeVisible();
   await expect(
-    results.getByRole("img", {
+    streets.getByRole("img", {
       name: "Supply estimate Moderate, level 2 of 3",
     }),
   ).toBeVisible();
   for (const numeral of ["I.", "II.", "III."]) {
     await expect(
-      results.getByText(numeral, { exact: true }).first(),
+      streets.getByText(numeral, { exact: true }).first(),
     ).toBeVisible();
   }
-  await expect(results).toContainText("Torstraße");
+  await expect(streets).toContainText("Torstraße");
 
-  const rail = page.getByRole("complementary", { name: "Nearby context" });
-  await expect(
-    rail.getByRole("region", { name: "Parking management zones" }),
-  ).toContainText("Zone 12");
+  await page
+    .locator("summary", { hasText: "Parking management zones" })
+    .click();
+  const zones = page.getByRole("region", { name: "Parking management zones" });
+  await expect(zones).toContainText("Zone 12");
 
-  const eventsRegion = rail.getByRole("region", {
+  await page.locator("summary", { hasText: "Street events" }).click();
+  const eventsRegion = page.getByRole("region", {
     name: "Planned street events",
   });
   await expect(eventsRegion).toContainText("1–5 of 7");
