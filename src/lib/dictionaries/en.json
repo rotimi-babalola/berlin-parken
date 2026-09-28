@@ -123,5 +123,7 @@
   "signal.streetsCount": "{count} streets",
   "signal.zonesCount": "{count} zones",
   "signal.eventsCount": "{count} events",
-  "signal.footer": "Berlin Open Data provides mapped supply and context. Follow signs on site."
+  "signal.footer": "Berlin Open Data provides mapped supply and context. Follow signs on site.",
+  "signal.mapLabel": "Map near {destination}",
+  "signal.mapTiles": "Tiles:"
 }

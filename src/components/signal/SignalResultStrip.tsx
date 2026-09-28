@@ -2,7 +2,7 @@ import type { SearchReady } from "@/hooks/use-address-search";
 import type { ParkingSummary } from "@/lib/parking";
 import type { ParkingContext } from "@/lib/parking-context";
 import { useLocale } from "@/lib/i18n";
-import { MapArt } from "./MapArt";
+import { LocationMap } from "./LocationMap";
 import styles from "./signal.module.css";
 
 type Props = {
@@ -97,7 +97,12 @@ export function SignalResultStrip({
         <small>{t("signal.metricNote")}</small>
       </div>
       <div className={styles.mapCell}>
-        <MapArt destination={search.destination.label} />
+        <LocationMap
+          longitude={search.destination.longitude}
+          latitude={search.destination.latitude}
+          radiusMeters={search.radiusMeters}
+          destination={search.destination.label}
+        />
       </div>
       <div className={styles.checklist}>
         <span>{t("signal.checklistTitle")}</span>

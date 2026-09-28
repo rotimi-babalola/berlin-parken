@@ -123,5 +123,7 @@
   "signal.streetsCount": "{count} Straßen",
   "signal.zonesCount": "{count} Zonen",
   "signal.eventsCount": "{count} Veranstaltungen",
-  "signal.footer": "Berlin Open Data liefert Bestand und Kontext. Beachte die Schilder vor Ort."
+  "signal.footer": "Berlin Open Data liefert Bestand und Kontext. Beachte die Schilder vor Ort.",
+  "signal.mapLabel": "Karte bei {destination}",
+  "signal.mapTiles": "Kacheln:"
 }

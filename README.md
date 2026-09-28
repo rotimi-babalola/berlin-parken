@@ -8,6 +8,8 @@ Run `pnpm install` and `pnpm dev`, then open `http://localhost:3000`. Run `pnpm 
 
 The app uses the public Photon demo by default. To use another Photon instance, set `PHOTON_API_URL` in `.env.local` to its HTTPS API endpoint. This setting is read by the server route; do not prefix it with `NEXT_PUBLIC_`. The current providers require no API keys. Keep any future provider credentials in server-only environment variables and out of source control.
 
+The result map uses CARTO basemap tiles, which require an API key. Request one at `https://carto.com/basemaps/apikey` (free up to 5 million tile requests a month, no CARTO account needed) and set `NEXT_PUBLIC_CARTO_API_KEY` in `.env.local`. The `NEXT_PUBLIC_` prefix is required: the key is read in the browser to build tile URLs. Without a key the map still renders but tiles carry an "API key required" watermark. Restrict the key to your site's HTTP referrer in the CARTO dashboard so nobody else can spend your quota, and force-refresh after adding the key — browsers and the tile CDN cache the watermarked tiles.
+
 The geocoder request times out after 5 seconds. Each WFS request times out after 8 seconds, with a 20-second total budget per service, at most five pages of 500 features per layer, and a 100–1,000 m search radius. The browser stops waiting after 25 seconds and offers a retry. Partial results remain labelled as partial.
 
 ## Confirmed v1 foundation
