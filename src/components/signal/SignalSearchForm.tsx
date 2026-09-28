@@ -77,6 +77,9 @@ export function SignalSearchForm({
             onChange={(event) => onQueryChange(event.target.value)}
             onKeyDown={onKeyDown}
           />
+          {suggestionState === "loading" && (
+            <span className={styles.spinner} aria-hidden="true" />
+          )}
           {suggestions.length > 0 && (
             <ul
               className={styles.suggestions}

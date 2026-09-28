@@ -204,11 +204,29 @@
   height: 56px;
   border: 1px solid #9fb5a5;
   border-radius: 3px;
-  padding: 0 16px;
+  padding: 0 44px 0 16px;
   background: #fff;
   color: #17231d;
   font-size: 16px;
   caret-color: #153f2c;
+}
+.spinner {
+  position: absolute;
+  right: 14px;
+  top: 50%;
+  width: 18px;
+  height: 18px;
+  margin-top: -9px;
+  border: 2px solid #9fb5a5;
+  border-top-color: #153f2c;
+  border-radius: 50%;
+  animation: signal-spin 0.7s linear infinite;
+  pointer-events: none;
+}
+@keyframes signal-spin {
+  to {
+    transform: rotate(360deg);
+  }
 }
 .inputWrap input::placeholder {
   color: #506659;
@@ -640,6 +658,10 @@
 @media (prefers-reduced-motion: reduce) {
   .detailCount b {
     transition: none;
+  }
+  .spinner {
+    animation: none;
+    border-top-color: #9fb5a5;
   }
 }
 @media (max-width: 1100px) {
