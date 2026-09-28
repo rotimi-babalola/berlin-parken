@@ -8,8 +8,7 @@ import {
   within,
 } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { AddressSearch } from "@/components/address-search";
-import { LanguageSwitcher } from "@/components/language-switcher";
+import { SignalPage } from "@/components/signal/SignalPage";
 import { LocaleProvider } from "@/lib/i18n";
 import type { AddressSuggestion } from "@/lib/geocoder/types";
 
@@ -43,7 +42,15 @@ afterEach(() => {
   }
 });
 
-describe("AddressSearch", () => {
+function openStreets() {
+  fireEvent.click(screen.getByText("01 / STREET INVENTORY"));
+}
+
+function openEvents() {
+  fireEvent.click(screen.getByText("03 / PLANNED CHANGES"));
+}
+
+describe("SignalPage", () => {
   async function searchAndSubmit(parkingPayload: unknown) {
     vi.stubGlobal(
       "fetch",
@@ -59,7 +66,7 @@ describe("AddressSearch", () => {
       }),
     );
 
-    render(<AddressSearch />);
+    render(<SignalPage />);
     const input = screen.getByRole("combobox", { name: "Destination address" });
     fireEvent.change(input, { target: { value: "Alexanderplatz" } });
     fireEvent.click(
@@ -101,22 +108,24 @@ describe("AddressSearch", () => {
       ],
     });
 
-    const results = await screen.findByRole("region", {
-      name: "Mapped street parking",
-    });
-    expect(within(results).getByText("Moderate", { exact: true })).toBeTruthy();
+    await screen.findByText("WHAT YOU CAN CHECK");
+    openStreets();
+    const details = screen
+      .getByText("01 / STREET INVENTORY")
+      .closest("details") as HTMLElement;
+    expect(within(details).getByText("Moderate", { exact: true })).toBeTruthy();
     expect(
-      within(results).getByRole("img", {
+      within(details).getByRole("img", {
         name: "Supply estimate Moderate, level 2 of 3",
       }),
     ).toBeTruthy();
     for (const street of ["Torstraße", "Linienstraße", "Gormannstraße"]) {
-      expect(within(results).getByText(street)).toBeTruthy();
+      expect(within(details).getByText(street)).toBeTruthy();
     }
     expect(
-      within(within(results).getByRole("list")).getAllByRole("listitem"),
+      within(within(details).getByRole("list")).getAllByRole("listitem"),
     ).toHaveLength(3);
-    expect(within(results).getByText(/120 m away/)).toBeTruthy();
+    expect(within(details).getByText(/120 m away/)).toBeTruthy();
   });
 
   it("pages through more than five events with the carousel controls", async () => {
@@ -140,24 +149,31 @@ describe("AddressSearch", () => {
       },
     });
 
-    await screen.findByText("1–5 of 6");
-    expect(screen.queryByText("Event 6")).toBeNull();
+    await screen.findByText("WHAT YOU CAN CHECK");
+    openEvents();
+    const details = screen
+      .getByText("03 / PLANNED CHANGES")
+      .closest("details") as HTMLElement;
+    await within(details).findByText("1–5 of 6");
+    expect(within(details).queryByText("Event 6")).toBeNull();
     expect(
-      screen.getByRole("button", { name: "Show previous events" }),
-    ).toHaveProperty("disabled", true);
-
-    fireEvent.click(screen.getByRole("button", { name: "Show next events" }));
-    expect(await screen.findByText("6–6 of 6")).toBeTruthy();
-    expect(screen.getByText("Event 6")).toBeTruthy();
-    expect(
-      screen.getByRole("button", { name: "Show next events" }),
+      within(details).getByRole("button", { name: "Show previous events" }),
     ).toHaveProperty("disabled", true);
 
     fireEvent.click(
-      screen.getByRole("button", { name: "Show previous events" }),
+      within(details).getByRole("button", { name: "Show next events" }),
     );
-    expect(await screen.findByText("1–5 of 6")).toBeTruthy();
-    expect(screen.queryByText("Event 6")).toBeNull();
+    expect(await within(details).findByText("6–6 of 6")).toBeTruthy();
+    expect(within(details).getByText("Event 6")).toBeTruthy();
+    expect(
+      within(details).getByRole("button", { name: "Show next events" }),
+    ).toHaveProperty("disabled", true);
+
+    fireEvent.click(
+      within(details).getByRole("button", { name: "Show previous events" }),
+    );
+    expect(await within(details).findByText("1–5 of 6")).toBeTruthy();
+    expect(within(details).queryByText("Event 6")).toBeNull();
   });
 
   it("retries the same query and returns focus to the address field", async () => {
@@ -172,7 +188,7 @@ describe("AddressSearch", () => {
     });
     vi.stubGlobal("fetch", fetchMock);
 
-    render(<AddressSearch />);
+    render(<SignalPage />);
     const input = screen.getByRole("combobox", { name: "Destination address" });
     fireEvent.change(input, { target: { value: "Alexanderplatz" } });
     fireEvent.click(await screen.findByRole("button", { name: "Try again" }));
@@ -213,7 +229,7 @@ describe("AddressSearch", () => {
       }),
     );
 
-    render(<AddressSearch />);
+    render(<SignalPage />);
     fireEvent.change(
       screen.getByRole("combobox", { name: "Destination address" }),
       {
@@ -246,7 +262,7 @@ describe("AddressSearch", () => {
       })),
     );
 
-    render(<AddressSearch />);
+    render(<SignalPage />);
     const input = screen.getByRole("combobox", { name: "Destination address" });
     fireEvent.change(input, { target: { value: "Alexanderplatz" } });
     await screen.findByRole("option", { name: /Alexanderplatz 1/ });
@@ -254,7 +270,11 @@ describe("AddressSearch", () => {
 
     expect((input as HTMLInputElement).value).toBe("Alexanderplatz");
     expect(screen.getAllByRole("option")).toHaveLength(6);
-    expect(screen.queryByText("Search area set")).toBeNull();
+    expect(
+      screen.queryByText(
+        "Choose a destination above to see a parking overview here.",
+      ),
+    ).toBeTruthy();
   });
 
   it("selects the keyboard-highlighted result and scrolls it into view", async () => {
@@ -268,7 +288,7 @@ describe("AddressSearch", () => {
     const scrollIntoView = vi.fn();
     HTMLElement.prototype.scrollIntoView = scrollIntoView;
 
-    render(<AddressSearch />);
+    render(<SignalPage />);
     const input = screen.getByRole("combobox", { name: "Destination address" });
     fireEvent.change(input, { target: { value: "Alexanderplatz" } });
     await screen.findByRole("option", { name: /Alexanderplatz 1/ });
@@ -284,7 +304,7 @@ describe("AddressSearch", () => {
   });
 
   it("focuses and describes the address field when submitted without a suggestion", () => {
-    render(<AddressSearch />);
+    render(<SignalPage />);
     const input = screen.getByRole("combobox", { name: "Destination address" });
     fireEvent.click(
       screen.getByRole("button", { name: "Check nearby streets" }),
@@ -301,20 +321,20 @@ describe("AddressSearch", () => {
     window.localStorage.clear();
     render(
       <LocaleProvider>
-        <LanguageSwitcher />
-        <AddressSearch />
+        <SignalPage />
       </LocaleProvider>,
     );
 
-    fireEvent.click(screen.getByRole("button", { name: "DE" }));
+    fireEvent.click(screen.getAllByRole("button", { name: "DE" })[0]);
 
-    expect(await screen.findByText("Wohin geht’s?")).toBeTruthy();
+    expect(
+      await screen.findByRole("button", {
+        name: "Straßen in der Nähe prüfen",
+      }),
+    ).toBeTruthy();
     expect(
       screen.queryByRole("button", { name: "Check nearby streets" }),
     ).toBeNull();
-    expect(
-      screen.getByRole("button", { name: "Straßen in der Nähe prüfen" }),
-    ).toBeTruthy();
     expect(window.localStorage.getItem("berlin-parken-locale")).toBe("de");
   });
 
@@ -343,7 +363,7 @@ describe("AddressSearch", () => {
       }),
     );
 
-    render(<AddressSearch />);
+    render(<SignalPage />);
     const input = screen.getByRole("combobox", { name: "Destination address" });
     fireEvent.change(input, { target: { value: "Alexanderplatz" } });
     fireEvent.click(
@@ -363,9 +383,6 @@ describe("AddressSearch", () => {
     );
     await waitFor(() => expect(parkingResponses).toHaveLength(2));
 
-    const results = screen.getByRole("region", {
-      name: "Mapped street parking",
-    });
     await act(async () => {
       parkingResponses[1]({
         ok: true,
@@ -381,7 +398,7 @@ describe("AddressSearch", () => {
         }),
       });
     });
-    expect(within(results).getByText("22", { selector: "p" })).toBeTruthy();
+    expect(screen.getByText("22", { selector: "strong" })).toBeTruthy();
 
     await act(async () => {
       parkingResponses[0]({
@@ -399,8 +416,8 @@ describe("AddressSearch", () => {
       });
     });
 
-    expect(within(results).getByText(/Potsdamer Platz 1/)).toBeTruthy();
-    expect(within(results).getByText("22", { selector: "p" })).toBeTruthy();
-    expect(within(results).queryByText("11", { selector: "p" })).toBeNull();
+    expect(screen.getAllByText(/Potsdamer Platz 1/)).toHaveLength(3);
+    expect(screen.getByText("22", { selector: "strong" })).toBeTruthy();
+    expect(screen.queryByText("11", { selector: "strong" })).toBeNull();
   });
 });
