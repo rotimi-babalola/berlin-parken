@@ -401,12 +401,21 @@
   padding: 9px 0;
   border-top: 1px solid var(--line);
   color: var(--muted);
+  vertical-align: top;
 }
 .supplyValue {
   text-align: right;
   color: var(--ink);
   font-weight: 700;
   font-variant-numeric: tabular-nums;
+  vertical-align: top;
+  white-space: nowrap;
+}
+.supplyHint {
+  display: block;
+  margin-top: 2px;
+  font-size: 11px;
+  line-height: 1.45;
 }
 .assessment {
   padding: 14px 16px;

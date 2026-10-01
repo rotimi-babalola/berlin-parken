@@ -54,10 +54,26 @@ export function SignalDetails({ search, parking, zones, events }: Props) {
           <div className={styles.detailBody}>
             <SupplyTable
               rows={[
-                [t("supply.unrestricted"), parking.usableSpaces],
-                [t("supply.conditional"), parking.conditionalSpaces],
-                [t("supply.restricted"), parking.restrictedSpaces],
-                [t("supply.unknown"), parking.unknownSpaces],
+                {
+                  label: t("supply.unrestricted"),
+                  value: parking.usableSpaces,
+                  hint: t("supply.unrestrictedHint"),
+                },
+                {
+                  label: t("supply.conditional"),
+                  value: parking.conditionalSpaces,
+                  hint: t("supply.conditionalHint"),
+                },
+                {
+                  label: t("supply.restricted"),
+                  value: parking.restrictedSpaces,
+                  hint: t("supply.restrictedHint"),
+                },
+                {
+                  label: t("supply.unknown"),
+                  value: parking.unknownSpaces,
+                  hint: t("supply.unknownHint"),
+                },
               ]}
             />
             <StreetRanking streets={parking.streets} />
