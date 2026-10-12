@@ -116,6 +116,19 @@ function dateValue(value: unknown): number | undefined {
   return Number.isFinite(timestamp) ? timestamp : undefined;
 }
 
+// Start-of-day twin of dateValue: a date-only beginning means the whole
+// day overlaps a visit later that day, so it must not compare as end-of-day.
+function startValue(value: unknown): number | undefined {
+  if (typeof value !== "string" || !value.trim()) return;
+  const normalized = value
+    .trim()
+    .replace(/^(\d{2})\.(\d{2})\.(\d{4})$/, "$3-$2-$1");
+  const timestamp = Date.parse(
+    normalized.length === 10 ? `${normalized}T00:00:00` : normalized,
+  );
+  return Number.isFinite(timestamp) ? timestamp : undefined;
+}
+
 function createSource<T>(
   matchedCount: number,
   fetchedAt: string,
@@ -144,6 +157,7 @@ export async function getParkingContext(
   longitude: number,
   latitude: number,
   radiusMeters: number,
+  visit?: { arrivalMs: number; durationMinutes: number },
 ): Promise<ParkingContext> {
   const [east, north] = toEpsg25833(longitude, latitude);
   const point: Position = [east, north];
@@ -187,15 +201,26 @@ export async function getParkingContext(
 
   const now = Date.now();
   const horizon = now + 14 * 24 * 60 * 60 * 1000;
+  const visitEnd =
+    visit === undefined
+      ? undefined
+      : visit.arrivalMs + visit.durationMinutes * 60 * 1000;
   const eventItems: PlannedEvent[] = eventFetch.features
     .flatMap((feature, index) => {
       try {
         const p = feature.properties;
-        const start = dateValue(p.dat_beginn);
+        const start = startValue(p.dat_beginn);
         const end = dateValue(p.dat_ende);
         if (
           (start !== undefined && start > horizon) ||
           (end !== undefined && end < now)
+        )
+          return [];
+        if (
+          visitEnd !== undefined &&
+          visit !== undefined &&
+          ((end !== undefined && end < visit.arrivalMs) ||
+            (start !== undefined && start > visitEnd))
         )
           return [];
         const distanceMeters = geometryDistance(point, feature.geometry);

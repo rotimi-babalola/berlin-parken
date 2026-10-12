@@ -286,6 +286,35 @@
   accent-color: currentColor;
   cursor: pointer;
 }
+.timeRow {
+  display: flex;
+  gap: 12px;
+  margin-top: 18px;
+}
+.timeField {
+  flex: 1;
+  min-width: 0;
+  display: grid;
+  gap: 8px;
+}
+.timeField label {
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+.timeField input,
+.timeField select {
+  min-height: 48px;
+  width: 100%;
+  border: 1px solid #9fb5a5;
+  border-radius: 3px;
+  padding: 0 12px;
+  background: #fff;
+  color: #17231d;
+  font-size: 16px;
+  font-family: inherit;
+}
 .demoHint {
   margin: 6px 0 0;
   font-size: 12px;
@@ -690,6 +719,9 @@
   }
 }
 @media (max-width: 520px) {
+  .timeRow {
+    flex-direction: column;
+  }
   .header {
     padding: 0 20px;
     min-height: 70px;

@@ -269,7 +269,9 @@ describe("SignalPage", () => {
     fireEvent.keyDown(input, { key: "Enter" });
 
     expect((input as HTMLInputElement).value).toBe("Alexanderplatz");
-    expect(screen.getAllByRole("option")).toHaveLength(6);
+    expect(
+      within(screen.getByRole("listbox")).getAllByRole("option"),
+    ).toHaveLength(6);
     expect(
       screen.queryByText(
         "Choose a destination above to see a parking overview here.",
@@ -419,5 +421,120 @@ describe("SignalPage", () => {
     expect(screen.getAllByText(/Potsdamer Platz 1/)).toHaveLength(3);
     expect(screen.getByText("22", { selector: "strong" })).toBeTruthy();
     expect(screen.queryByText("11", { selector: "strong" })).toBeNull();
+  });
+
+  it("shows the chosen arrival and stay in the results and keeps them while refining", async () => {
+    const parkingUrls: string[] = [];
+    const availablePayload = {
+      status: "available",
+      mappedSpaces: 42,
+      usableSpaces: 30,
+      conditionalSpaces: 8,
+      restrictedSpaces: 4,
+      unknownSpaces: 0,
+      featureCount: 3,
+      streets: [{ name: "Alexanderstraße", mappedSpaces: 42, features: 3 }],
+    };
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async (input: RequestInfo | URL) => {
+        const url = String(input);
+        if (url.startsWith("/api/geocode?"))
+          return {
+            ok: true,
+            json: async () => ({ suggestions: [suggestions[0]] }),
+          };
+        parkingUrls.push(url);
+        return { ok: true, json: async () => availablePayload };
+      }),
+    );
+
+    render(<SignalPage />);
+    fireEvent.change(
+      screen.getByRole("combobox", { name: "Destination address" }),
+      { target: { value: "Alexanderplatz" } },
+    );
+    fireEvent.click(
+      await screen.findByRole("option", { name: /Alexanderplatz 1/ }),
+    );
+    const arrival = screen.getByLabelText("Arrival time") as HTMLInputElement;
+    expect(arrival.value).not.toBe("");
+    fireEvent.change(screen.getByLabelText("Intended stay"), {
+      target: { value: "120" },
+    });
+    fireEvent.click(
+      screen.getByRole("button", { name: "Check nearby streets" }),
+    );
+
+    await screen.findByText("WHAT YOU CAN CHECK");
+    expect(screen.getAllByText(/Arrival .*·.*stay/)).toHaveLength(2);
+
+    // Refining the radius keeps the chosen time inputs, and the next
+    // search reuses them with the new radius.
+    fireEvent.change(screen.getByRole("slider"), { target: { value: 700 } });
+    expect(
+      (screen.getByLabelText("Arrival time") as HTMLInputElement).value,
+    ).toBe(arrival.value);
+    expect(
+      (screen.getByLabelText("Intended stay") as HTMLSelectElement).value,
+    ).toBe("120");
+    fireEvent.click(
+      screen.getByRole("button", { name: "Check nearby streets" }),
+    );
+    await screen.findByText("WHAT YOU CAN CHECK");
+
+    expect(parkingUrls).toHaveLength(2);
+    const first = new URL(parkingUrls[0], "http://localhost").searchParams;
+    const second = new URL(parkingUrls[1], "http://localhost").searchParams;
+    expect(first.get("duration")).toBe("120");
+    expect(second.get("duration")).toBe("120");
+    expect(first.get("arrival")).toBe(second.get("arrival"));
+    expect(second.get("radius")).toBe("700");
+    expect(Number.isFinite(Date.parse(first.get("arrival") ?? ""))).toBe(true);
+  });
+
+  it("blocks the search when the arrival time is in the past", async () => {
+    let parkingRequests = 0;
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async (input: RequestInfo | URL) => {
+        const url = String(input);
+        if (url.startsWith("/api/geocode?"))
+          return {
+            ok: true,
+            json: async () => ({ suggestions: [suggestions[0]] }),
+          };
+        parkingRequests += 1;
+        return { ok: true, json: async () => ({}) };
+      }),
+    );
+
+    render(<SignalPage />);
+    fireEvent.change(
+      screen.getByRole("combobox", { name: "Destination address" }),
+      { target: { value: "Alexanderplatz" } },
+    );
+    fireEvent.click(
+      await screen.findByRole("option", { name: /Alexanderplatz 1/ }),
+    );
+    const arrival = screen.getByLabelText("Arrival time") as HTMLInputElement;
+    fireEvent.change(arrival, { target: { value: "2000-01-01T10:00" } });
+    fireEvent.click(
+      screen.getByRole("button", { name: "Check nearby streets" }),
+    );
+
+    expect(
+      await screen.findByText(
+        "Choose a future arrival time within the next 14 days.",
+      ),
+    ).toBeTruthy();
+    expect(arrival.getAttribute("aria-invalid")).toBe("true");
+    expect(document.activeElement).toBe(arrival);
+    expect(parkingRequests).toBe(0);
+    expect(
+      screen.queryByText(
+        "Choose a destination above to see a parking overview here.",
+      ),
+    ).toBeTruthy();
   });
 });

@@ -20,8 +20,13 @@ test("searches, selects an address, and shows nearby parking", async ({
   page,
 }) => {
   let requestedRadius: string | null = null;
+  let requestedArrival: string | null = null;
+  let requestedDuration: string | null = null;
   await page.route("**/api/parking?**", async (route) => {
-    requestedRadius = new URL(route.request().url()).searchParams.get("radius");
+    const params = new URL(route.request().url()).searchParams;
+    requestedRadius = params.get("radius");
+    requestedArrival = params.get("arrival");
+    requestedDuration = params.get("duration");
     await route.fulfill({
       json: {
         status: "available",
@@ -44,6 +49,11 @@ test("searches, selects an address, and shows nearby parking", async ({
   const address = page.getByRole("combobox", { name: "Destination address" });
   await address.fill("Alexanderplatz");
   await page.getByRole("option", { name: /Alexanderplatz 1/ }).click();
+  const arrival = page.getByLabel("Arrival time");
+  await expect(arrival).not.toHaveValue("");
+  const duration = page.getByLabel("Intended stay");
+  await duration.focus();
+  await duration.selectOption("120");
   const radius = page.getByRole("slider");
   await radius.focus();
   await radius.press("End");
@@ -58,11 +68,14 @@ test("searches, selects an address, and shows nearby parking", async ({
   await expect(strip).toContainText("Alexanderplatz 1");
   await expect(strip).toContainText("42");
   await expect(strip).toContainText("Alexanderstraße");
+  await expect(strip).toContainText(/Arrival .* stay/);
   await page.locator("summary", { hasText: "Nearby streets" }).click();
   await expect(page.getByRole("row", { name: /Unrestricted/ })).toContainText(
     "30",
   );
   expect(requestedRadius).toBe("700");
+  expect(requestedDuration).toBe("120");
+  expect(Number.isFinite(Date.parse(requestedArrival ?? ""))).toBe(true);
 });
 
 test("shows the Bescheid report, side rail, and event carousel", async ({
@@ -164,6 +177,32 @@ test("shows the Bescheid report, side rail, and event carousel", async ({
     .getByRole("button", { name: "Show previous events" })
     .click();
   await expect(eventsRegion).toContainText("1–5 of 7");
+});
+
+test("blocks time-specific guidance for a past arrival time", async ({
+  page,
+}) => {
+  let parkingRequests = 0;
+  await page.route("**/api/parking?**", async (route) => {
+    parkingRequests += 1;
+    await route.fulfill({ json: { status: "empty" } });
+  });
+
+  await page.goto("/");
+  const address = page.getByRole("combobox", { name: "Destination address" });
+  await address.fill("Alexanderplatz");
+  await page.getByRole("option", { name: /Alexanderplatz 1/ }).click();
+  const arrival = page.getByLabel("Arrival time");
+  await arrival.fill("2000-01-01T10:00");
+  await arrival.press("Tab");
+  await page.getByRole("button", { name: "Check nearby streets" }).click();
+
+  await expect(
+    page.getByText("Choose a future arrival time within the next 14 days."),
+  ).toBeVisible();
+  await expect(arrival).toHaveAttribute("aria-invalid", "true");
+  await expect(arrival).toBeFocused();
+  expect(parkingRequests).toBe(0);
 });
 
 test("requires selecting an address suggestion before searching", async ({
