@@ -305,6 +305,8 @@
 }
 .timeField input,
 .timeField select {
+  min-width: 0;
+  max-width: 100%;
   min-height: 48px;
   width: 100%;
   border: 1px solid #9fb5a5;
@@ -327,6 +329,7 @@
   font-size: 12px;
   color: #506659;
   min-height: 0;
+  overflow-wrap: anywhere;
 }
 .liveStatus:empty {
   display: none;
@@ -400,6 +403,7 @@
   font-size: 17px;
   margin: 7px 0 30px;
   font-weight: 700;
+  overflow-wrap: anywhere;
 }
 .metric small {
   color: #51685a;
@@ -554,6 +558,8 @@
 }
 .detailHeading p {
   margin: 0;
+  min-width: 0;
+  overflow-wrap: anywhere;
   color: var(--detail-muted);
   font-size: 14px;
   text-align: right;
