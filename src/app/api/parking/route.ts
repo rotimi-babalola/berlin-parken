@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { getNearbyParking } from "@/lib/parking";
-import { getParkingContext } from "@/lib/parking-context";
+import { getParkingContext, type Visit } from "@/lib/parking-context";
+import { parseArrivalInstant, parseDuration } from "@/lib/search-time";
 
 export const runtime = "nodejs";
 
@@ -26,9 +27,30 @@ export async function GET(request: Request) {
     );
   }
 
+  const arrivalParam = params.get("arrival");
+  const durationParam = params.get("duration");
+  let visit: Visit | undefined;
+  if (arrivalParam !== null || durationParam !== null) {
+    if (arrivalParam === null || durationParam === null) {
+      return NextResponse.json(
+        { error: "Provide both arrival time and stay duration." },
+        { status: 400 },
+      );
+    }
+    const arrival = parseArrivalInstant(arrivalParam);
+    const duration = parseDuration(durationParam);
+    if (!arrival.ok || !duration.ok) {
+      return NextResponse.json(
+        { error: "Provide a future arrival time and a valid stay duration." },
+        { status: 400 },
+      );
+    }
+    visit = { arrivalMs: arrival.ms, durationMinutes: duration.minutes };
+  }
+
   const [parking, context] = await Promise.all([
     getNearbyParking(longitude, latitude, radiusMeters),
-    getParkingContext(longitude, latitude, radiusMeters),
+    getParkingContext(longitude, latitude, radiusMeters, visit),
   ]);
   return NextResponse.json(
     { ...parking, ...context },

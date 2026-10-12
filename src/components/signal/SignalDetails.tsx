@@ -2,6 +2,7 @@ import type { SearchReady } from "@/hooks/use-address-search";
 import type { ParkingSummary } from "@/lib/parking";
 import type { ParkingContext } from "@/lib/parking-context";
 import { useLocale } from "@/lib/i18n";
+import { formatVisit } from "@/lib/search-time";
 import { AssessmentCard } from "@/components/assessment-card";
 import { EventSection } from "@/components/event-section";
 import { StreetRanking } from "@/components/street-ranking";
@@ -23,7 +24,7 @@ function formatRadius(meters: number): string {
 // Dumb: full-picture <details> sections. Content renders the shared
 // presentational components; data arrives via props.
 export function SignalDetails({ search, parking, zones, events }: Props) {
-  const { t } = useLocale();
+  const { t, locale } = useLocale();
   const radius = formatRadius(search.radiusMeters);
 
   return (
@@ -34,7 +35,8 @@ export function SignalDetails({ search, parking, zones, events }: Props) {
           <h2 id="explore-title">{t("signal.detailTitle")}</h2>
         </div>
         <p>
-          {search.destination.label} · {t("results.within", { radius })}
+          {search.destination.label} · {t("results.within", { radius })} ·{" "}
+          {formatVisit(t, search.arrivalMs, search.durationMinutes, locale)}
         </p>
       </div>
       <div className={styles.detailGrid}>

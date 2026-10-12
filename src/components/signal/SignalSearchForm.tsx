@@ -4,24 +4,33 @@ import { useId } from "react";
 import type { KeyboardEvent, RefObject, SubmitEvent } from "react";
 import type { AddressSuggestion } from "@/lib/geocoder/types";
 import { useLocale } from "@/lib/i18n";
+import { DURATION_OPTIONS, formatDuration } from "@/lib/search-time";
 import styles from "./signal.module.css";
 
 type Props = {
   query: string;
   selected: AddressSuggestion | null;
   radius: number;
+  arrival: string;
+  arrivalMin: string;
+  arrivalMax: string;
+  durationMinutes: number;
+  timeError: boolean;
   activeIndex: number;
   suggestions: AddressSuggestion[];
   suggestionState: "idle" | "loading" | "empty" | "error" | "ready";
   submitError: boolean;
   liveMessage: string;
   inputRef: RefObject<HTMLInputElement | null>;
+  arrivalRef: RefObject<HTMLInputElement | null>;
   optionRefs: RefObject<Array<HTMLLIElement | null>>;
   onQueryChange: (value: string) => void;
   onChooseSuggestion: (suggestion: AddressSuggestion) => void;
   onKeyDown: (event: KeyboardEvent<HTMLInputElement>) => void;
   onSubmit: (event: SubmitEvent<HTMLFormElement>) => void;
   onRadiusChange: (value: number) => void;
+  onArrivalChange: (value: string) => void;
+  onDurationChange: (value: number) => void;
   onRetry: () => void;
 };
 
@@ -31,26 +40,36 @@ export function SignalSearchForm({
   query,
   selected,
   radius,
+  arrival,
+  arrivalMin,
+  arrivalMax,
+  durationMinutes,
+  timeError,
   activeIndex,
   suggestions,
   suggestionState,
   submitError,
   liveMessage,
   inputRef,
+  arrivalRef,
   optionRefs,
   onQueryChange,
   onChooseSuggestion,
   onKeyDown,
   onSubmit,
   onRadiusChange,
+  onArrivalChange,
+  onDurationChange,
   onRetry,
 }: Props) {
   const inputId = useId();
   const listId = useId();
-  const { t } = useLocale();
+  const { t, locale } = useLocale();
 
   return (
-    <form className={styles.searchForm} onSubmit={onSubmit}>
+    // noValidate: arrival/range hints stay as picker aids; this form's own
+    // bilingual validation (submitError/timeError + focus) is the single path.
+    <form className={styles.searchForm} onSubmit={onSubmit} noValidate>
       <label htmlFor={inputId}>{t("search.addressLabel")}</label>
       <div className={styles.searchLine}>
         <div className={styles.inputWrap}>
@@ -130,6 +149,43 @@ export function SignalSearchForm({
         value={radius}
         onChange={(event) => onRadiusChange(Number(event.target.value))}
       />
+      <div className={styles.timeRow}>
+        <div className={styles.timeField}>
+          <label htmlFor={`${inputId}-arrival`}>
+            {t("search.arrivalLabel")}
+          </label>
+          <input
+            ref={arrivalRef}
+            id={`${inputId}-arrival`}
+            type="datetime-local"
+            value={arrival}
+            min={arrivalMin}
+            max={arrivalMax}
+            aria-invalid={timeError || undefined}
+            aria-describedby={timeError ? `${inputId}-time-error` : undefined}
+            onChange={(event) => onArrivalChange(event.target.value)}
+          />
+        </div>
+        <div className={styles.timeField}>
+          <label htmlFor={`${inputId}-duration`}>
+            {t("search.durationLabel")}
+          </label>
+          <select
+            id={`${inputId}-duration`}
+            value={durationMinutes}
+            onChange={(event) => onDurationChange(Number(event.target.value))}
+          >
+            {DURATION_OPTIONS.map((minutes) => (
+              <option key={minutes} value={minutes}>
+                {formatDuration(minutes, locale)}
+              </option>
+            ))}
+          </select>
+        </div>
+      </div>
+      <p className={styles.formError} id={`${inputId}-time-error`}>
+        {timeError ? t("search.timeError") : ""}
+      </p>
       <p className={styles.demoHint} id={`${inputId}-hint`}>
         {t("search.hint")}
       </p>

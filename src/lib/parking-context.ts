@@ -105,13 +105,20 @@ function text(value: unknown): string | undefined {
   return typeof value === "string" && value.trim() ? value.trim() : undefined;
 }
 
-function dateValue(value: unknown): number | undefined {
+function dateValue(
+  value: unknown,
+  boundary: "start" | "end" = "end",
+): number | undefined {
   if (typeof value !== "string" || !value.trim()) return;
   const normalized = value
     .trim()
     .replace(/^(\d{2})\.(\d{2})\.(\d{4})$/, "$3-$2-$1");
   const timestamp = Date.parse(
-    normalized.length === 10 ? `${normalized}T23:59:59` : normalized,
+    // A date-only beginning means the whole day overlaps a visit later
+    // that day, so it compares as start-of-day; endings stay end-of-day.
+    normalized.length === 10
+      ? `${normalized}${boundary === "start" ? "T00:00:00" : "T23:59:59"}`
+      : normalized,
   );
   return Number.isFinite(timestamp) ? timestamp : undefined;
 }
@@ -140,10 +147,25 @@ function createSource<T>(
   };
 }
 
+export type Visit = { arrivalMs: number; durationMinutes: number };
+
+function overlapsVisit(
+  start: number | undefined,
+  end: number | undefined,
+  visit: Visit,
+): boolean {
+  const visitEnd = visit.arrivalMs + visit.durationMinutes * 60 * 1000;
+  return !(
+    (end !== undefined && end < visit.arrivalMs) ||
+    (start !== undefined && start > visitEnd)
+  );
+}
+
 export async function getParkingContext(
   longitude: number,
   latitude: number,
   radiusMeters: number,
+  visit?: Visit,
 ): Promise<ParkingContext> {
   const [east, north] = toEpsg25833(longitude, latitude);
   const point: Position = [east, north];
@@ -191,13 +213,14 @@ export async function getParkingContext(
     .flatMap((feature, index) => {
       try {
         const p = feature.properties;
-        const start = dateValue(p.dat_beginn);
+        const start = dateValue(p.dat_beginn, "start");
         const end = dateValue(p.dat_ende);
         if (
           (start !== undefined && start > horizon) ||
           (end !== undefined && end < now)
         )
           return [];
+        if (visit !== undefined && !overlapsVisit(start, end, visit)) return [];
         const distanceMeters = geometryDistance(point, feature.geometry);
         if (distanceMeters > radiusMeters) return [];
         return [

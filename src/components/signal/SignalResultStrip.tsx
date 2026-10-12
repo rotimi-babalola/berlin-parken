@@ -2,6 +2,7 @@ import type { SearchReady } from "@/hooks/use-address-search";
 import type { ParkingSummary } from "@/lib/parking";
 import type { ParkingContext } from "@/lib/parking-context";
 import { useLocale } from "@/lib/i18n";
+import { formatVisit } from "@/lib/search-time";
 import { LocationMap } from "./LocationMap";
 import styles from "./signal.module.css";
 
@@ -93,6 +94,9 @@ export function SignalResultStrip({
           {t("signal.metricCaption", {
             destination: search.destination.label,
           })}
+        </p>
+        <p>
+          {formatVisit(t, search.arrivalMs, search.durationMinutes, locale)}
         </p>
         <small>{t("signal.metricNote")}</small>
       </div>

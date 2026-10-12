@@ -5,6 +5,12 @@ import type { KeyboardEvent, SubmitEvent } from "react";
 import type { AddressSuggestion } from "@/lib/geocoder/types";
 import type { ParkingSummary } from "@/lib/parking";
 import {
+  DEFAULT_DURATION_MINUTES,
+  defaultArrivalValue,
+  parseArrival,
+  parseDuration,
+} from "@/lib/search-time";
+import {
   ensureParkingContext,
   type ParkingContext,
 } from "@/lib/parking-context";
@@ -14,6 +20,9 @@ import { useAddressSuggestions } from "./use-address-suggestions";
 export type SearchReady = {
   destination: AddressSuggestion;
   radiusMeters: number;
+  arrivalLabel: string;
+  arrivalMs: number;
+  durationMinutes: number;
 };
 
 export type ParkingResult = ParkingSummary & ParkingContext;
@@ -23,6 +32,17 @@ export function useAddressSearch() {
   const [query, setQuery] = useState("");
   const [selected, setSelected] = useState<AddressSuggestion | null>(null);
   const [radius, setRadius] = useState(500);
+  const [arrival, setArrival] = useState(() => defaultArrivalValue());
+  // Picker hints only; live validation in handleSubmit uses Date.now().
+  // Frozen at mount so min/max don't churn every render for long-open tabs.
+  const [timeBounds] = useState(() => ({
+    min: defaultArrivalValue(),
+    max: defaultArrivalValue(Date.now() + 14 * 24 * 60 * 60 * 1000),
+  }));
+  const [durationMinutes, setDurationMinutes] = useState(
+    DEFAULT_DURATION_MINUTES,
+  );
+  const [timeError, setTimeError] = useState(false);
   const [activeIndex, setActiveIndex] = useState(-1);
   const [suggestionsDismissed, setSuggestionsDismissed] = useState(false);
   const [submitError, setSubmitError] = useState(false);
@@ -30,6 +50,7 @@ export function useAddressSearch() {
   const [parking, setParking] = useState<ParkingResult | null>(null);
   const [parkingLoading, setParkingLoading] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
+  const arrivalRef = useRef<HTMLInputElement>(null);
   const optionRefs = useRef<Array<HTMLLIElement | null>>([]);
   const parkingRequest = useRef<AbortController | null>(null);
   const {
@@ -100,18 +121,31 @@ export function useAddressSearch() {
     }
   }
 
-  function loadParking(destination: AddressSuggestion, radiusMeters: number) {
+  function loadParking(
+    destination: AddressSuggestion,
+    radiusMeters: number,
+    visit: Pick<SearchReady, "arrivalLabel" | "arrivalMs" | "durationMinutes">,
+  ) {
+    setTimeError(false);
     cancelParkingRequest();
     const controller = new AbortController();
     parkingRequest.current = controller;
     const timeout = window.setTimeout(() => controller.abort(), 25_000);
-    setSearchReady({ destination, radiusMeters });
+    setSearchReady({
+      destination,
+      radiusMeters,
+      arrivalLabel: visit.arrivalLabel,
+      arrivalMs: visit.arrivalMs,
+      durationMinutes: visit.durationMinutes,
+    });
     setParking(null);
     setParkingLoading(true);
     const params = new URLSearchParams({
       longitude: String(destination.longitude),
       latitude: String(destination.latitude),
       radius: String(radiusMeters),
+      arrival: new Date(visit.arrivalMs).toISOString(),
+      duration: String(visit.durationMinutes),
     });
     fetch(`/api/parking?${params}`, { signal: controller.signal })
       .then(async (response) => {
@@ -170,7 +204,18 @@ export function useAddressSearch() {
       inputRef.current?.focus();
       return;
     }
-    loadParking(selected, radius);
+    const parsedArrival = parseArrival(arrival);
+    const parsedDuration = parseDuration(durationMinutes);
+    if (!parsedArrival.ok || !parsedDuration.ok) {
+      setTimeError(true);
+      arrivalRef.current?.focus();
+      return;
+    }
+    loadParking(selected, radius, {
+      arrivalLabel: arrival,
+      arrivalMs: parsedArrival.date.getTime(),
+      durationMinutes: parsedDuration.minutes,
+    });
   }
 
   let liveMessage = "";
@@ -193,6 +238,11 @@ export function useAddressSearch() {
     query,
     selected,
     radius,
+    arrival,
+    arrivalMin: timeBounds.min,
+    arrivalMax: timeBounds.max,
+    durationMinutes,
+    timeError,
     activeIndex,
     visibleSuggestions,
     suggestionState,
@@ -201,6 +251,7 @@ export function useAddressSearch() {
     parking,
     parkingLoading,
     inputRef,
+    arrivalRef,
     optionRefs,
     liveMessage,
     chooseSuggestion,
@@ -212,6 +263,18 @@ export function useAddressSearch() {
       setRadius(value);
       setSearchReady(null);
     },
+    handleArrivalChange: (value: string) => {
+      cancelParkingRequest();
+      setArrival(value);
+      setTimeError(false);
+      setSearchReady(null);
+    },
+    handleDurationChange: (value: number) => {
+      cancelParkingRequest();
+      setDurationMinutes(value);
+      setTimeError(false);
+      setSearchReady(null);
+    },
     retrySuggestions: () => {
       setSuggestionsDismissed(false);
       inputRef.current?.focus();
@@ -219,7 +282,11 @@ export function useAddressSearch() {
     },
     retryParking: () => {
       if (searchReady)
-        loadParking(searchReady.destination, searchReady.radiusMeters);
+        loadParking(
+          searchReady.destination,
+          searchReady.radiusMeters,
+          searchReady,
+        );
     },
   };
 }
