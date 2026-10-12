@@ -33,6 +33,8 @@ export function useAddressSearch() {
   const [selected, setSelected] = useState<AddressSuggestion | null>(null);
   const [radius, setRadius] = useState(500);
   const [arrival, setArrival] = useState(() => defaultArrivalValue());
+  // Picker hints only; live validation in handleSubmit uses Date.now().
+  // Frozen at mount so min/max don't churn every render for long-open tabs.
   const [timeBounds] = useState(() => ({
     min: defaultArrivalValue(),
     max: defaultArrivalValue(Date.now() + 14 * 24 * 60 * 60 * 1000),
@@ -122,15 +124,8 @@ export function useAddressSearch() {
   function loadParking(
     destination: AddressSuggestion,
     radiusMeters: number,
-    arrivalValue: string,
-    stayMinutes: number,
+    visit: Pick<SearchReady, "arrivalLabel" | "arrivalMs" | "durationMinutes">,
   ) {
-    const parsedArrival = parseArrival(arrivalValue);
-    const parsedDuration = parseDuration(stayMinutes);
-    if (!parsedArrival.ok || !parsedDuration.ok) {
-      setTimeError(true);
-      return;
-    }
     setTimeError(false);
     cancelParkingRequest();
     const controller = new AbortController();
@@ -139,9 +134,9 @@ export function useAddressSearch() {
     setSearchReady({
       destination,
       radiusMeters,
-      arrivalLabel: arrivalValue,
-      arrivalMs: parsedArrival.date.getTime(),
-      durationMinutes: parsedDuration.minutes,
+      arrivalLabel: visit.arrivalLabel,
+      arrivalMs: visit.arrivalMs,
+      durationMinutes: visit.durationMinutes,
     });
     setParking(null);
     setParkingLoading(true);
@@ -149,8 +144,8 @@ export function useAddressSearch() {
       longitude: String(destination.longitude),
       latitude: String(destination.latitude),
       radius: String(radiusMeters),
-      arrival: parsedArrival.date.toISOString(),
-      duration: String(parsedDuration.minutes),
+      arrival: new Date(visit.arrivalMs).toISOString(),
+      duration: String(visit.durationMinutes),
     });
     fetch(`/api/parking?${params}`, { signal: controller.signal })
       .then(async (response) => {
@@ -209,12 +204,18 @@ export function useAddressSearch() {
       inputRef.current?.focus();
       return;
     }
-    if (!parseArrival(arrival).ok || !parseDuration(durationMinutes).ok) {
+    const parsedArrival = parseArrival(arrival);
+    const parsedDuration = parseDuration(durationMinutes);
+    if (!parsedArrival.ok || !parsedDuration.ok) {
       setTimeError(true);
       arrivalRef.current?.focus();
       return;
     }
-    loadParking(selected, radius, arrival, durationMinutes);
+    loadParking(selected, radius, {
+      arrivalLabel: arrival,
+      arrivalMs: parsedArrival.date.getTime(),
+      durationMinutes: parsedDuration.minutes,
+    });
   }
 
   let liveMessage = "";
@@ -284,8 +285,7 @@ export function useAddressSearch() {
         loadParking(
           searchReady.destination,
           searchReady.radiusMeters,
-          searchReady.arrivalLabel,
-          searchReady.durationMinutes,
+          searchReady,
         );
     },
   };

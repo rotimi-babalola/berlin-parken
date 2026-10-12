@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { getNearbyParking } from "@/lib/parking";
-import { getParkingContext } from "@/lib/parking-context";
+import { getParkingContext, type Visit } from "@/lib/parking-context";
 import { parseArrivalInstant, parseDuration } from "@/lib/search-time";
 
 export const runtime = "nodejs";
@@ -29,7 +29,7 @@ export async function GET(request: Request) {
 
   const arrivalParam = params.get("arrival");
   const durationParam = params.get("duration");
-  let visit: { arrivalMs: number; durationMinutes: number } | undefined;
+  let visit: Visit | undefined;
   if (arrivalParam !== null || durationParam !== null) {
     if (arrivalParam === null || durationParam === null) {
       return NextResponse.json(

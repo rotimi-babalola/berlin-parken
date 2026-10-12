@@ -2,7 +2,7 @@ import type { SearchReady } from "@/hooks/use-address-search";
 import type { ParkingSummary } from "@/lib/parking";
 import type { ParkingContext } from "@/lib/parking-context";
 import { useLocale } from "@/lib/i18n";
-import { formatArrival, formatDuration } from "@/lib/search-time";
+import { formatVisit } from "@/lib/search-time";
 import { AssessmentCard } from "@/components/assessment-card";
 import { EventSection } from "@/components/event-section";
 import { StreetRanking } from "@/components/street-ranking";
@@ -36,10 +36,7 @@ export function SignalDetails({ search, parking, zones, events }: Props) {
         </div>
         <p>
           {search.destination.label} · {t("results.within", { radius })} ·{" "}
-          {t("results.visit", {
-            arrival: formatArrival(search.arrivalLabel, locale),
-            duration: formatDuration(search.durationMinutes, locale),
-          })}
+          {formatVisit(t, search.arrivalMs, search.durationMinutes, locale)}
         </p>
       </div>
       <div className={styles.detailGrid}>

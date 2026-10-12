@@ -19,6 +19,13 @@ export function defaultArrivalValue(now = Date.now()): string {
 
 export type ArrivalError = "missing" | "invalid" | "past" | "tooFar";
 
+const DAY_MS = 24 * 60 * 60 * 1000;
+
+function checkBounds(ms: number, now: number): ArrivalError | undefined {
+  if (ms < now - PAST_TOLERANCE_MS) return "past";
+  if (ms > now + MAX_ARRIVAL_DAYS_AHEAD * DAY_MS) return "tooFar";
+}
+
 export function parseArrivalInstant(
   value: string,
   now = Date.now(),
@@ -26,12 +33,8 @@ export function parseArrivalInstant(
   if (!value.trim()) return { ok: false, error: "missing" };
   const ms = Date.parse(value.trim());
   if (!Number.isFinite(ms)) return { ok: false, error: "invalid" };
-  if (ms < now - PAST_TOLERANCE_MS) return { ok: false, error: "past" };
-  if (
-    ms >
-    now + MAX_ARRIVAL_DAYS_AHEAD * 24 * 60 * 60 * 1000 + PAST_TOLERANCE_MS
-  )
-    return { ok: false, error: "tooFar" };
+  const error = checkBounds(ms, now);
+  if (error) return { ok: false, error };
   return { ok: true, ms };
 }
 
@@ -44,25 +47,20 @@ export function parseArrival(
     return { ok: false, error: "invalid" };
   const date = new Date(value.trim());
   if (Number.isNaN(date.getTime())) return { ok: false, error: "invalid" };
-  if (date.getTime() < now - PAST_TOLERANCE_MS)
-    return { ok: false, error: "past" };
-  if (
-    date.getTime() >
-    now + MAX_ARRIVAL_DAYS_AHEAD * 24 * 60 * 60 * 1000 + PAST_TOLERANCE_MS
-  )
-    return { ok: false, error: "tooFar" };
+  const error = checkBounds(date.getTime(), now);
+  if (error) return { ok: false, error };
   return { ok: true, date };
 }
 
 export type DurationError = "invalid";
 
-export function parseDuration(value: unknown):
+export function parseDuration(value: string | number):
   | {
       ok: true;
       minutes: number;
     }
   | { ok: false; error: DurationError } {
-  const minutes = typeof value === "string" ? Number(value) : (value as number);
+  const minutes = typeof value === "string" ? Number(value) : value;
   if (
     !Number.isInteger(minutes) ||
     minutes < MIN_DURATION_MINUTES ||
@@ -72,10 +70,8 @@ export function parseDuration(value: unknown):
   return { ok: true, minutes };
 }
 
-export function formatArrival(value: string, locale: string): string {
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return value;
-  return date.toLocaleString(locale, {
+export function formatArrival(ms: number, locale: string): string {
+  return new Date(ms).toLocaleString(locale, {
     day: "numeric",
     month: "short",
     hour: "2-digit",
@@ -90,5 +86,17 @@ export function formatDuration(minutes: number, locale: string): string {
   const formatted = new Intl.NumberFormat(locale, {
     maximumFractionDigits: 1,
   }).format(hours);
-  return locale.startsWith("de") ? `${formatted} Std.` : `${formatted} h`;
+  return locale === "de" ? `${formatted} Std.` : `${formatted} h`;
+}
+
+export function formatVisit(
+  t: (key: "results.visit", vars?: Record<string, string | number>) => string,
+  arrivalMs: number,
+  durationMinutes: number,
+  locale: string,
+): string {
+  return t("results.visit", {
+    arrival: formatArrival(arrivalMs, locale),
+    duration: formatDuration(durationMinutes, locale),
+  });
 }
