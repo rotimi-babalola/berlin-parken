@@ -751,3 +751,45 @@ test("parses mapped validity and duration text without guessing", () => {
   assert.equal(parseMaxStayMinutes("2 Stunden"), 120);
   assert.equal(parseMaxStayMinutes("nach Bedarf"), null);
 });
+
+test("rejects invalid clock times instead of guessing permission", () => {
+  assert.equal(parseValidityWindows("Mo-Fr 07:99-08:00"), null);
+  assert.equal(parseValidityWindows("Mo-Fr 08:00-08:00"), null);
+  assert.equal(parseValidityWindows("Montag-Freitag 07:00-15:00"), null);
+  assert.equal(parseValidityWindows("werktags 07:00-15:00"), null);
+  assert.equal(parseValidityWindows("Mo-Fr 07:00-24:00 Uhr")?.length, 1);
+});
+
+test("shares days and times across comma and und chunks", () => {
+  assert.deepEqual(parseValidityWindows("Sa, So 10:00-18:00 Uhr"), [
+    { days: [0, 6], start: 600, end: 1080 },
+  ]);
+  assert.deepEqual(
+    parseValidityWindows("Mo-Fr 07:00-12:00 und 14:00-18:00 Uhr"),
+    [
+      { days: [1, 2, 3, 4, 5], start: 420, end: 720 },
+      { days: [1, 2, 3, 4, 5], start: 840, end: 1080 },
+    ],
+  );
+});
+
+test("treats a shared weekend window as usable on Saturday morning", async (t) => {
+  mockInsideFetch(t, {
+    beschraenkung: "Haltverbot",
+    geltungszeit_der_beschraenkung: "Sa, So 10:00-18:00 Uhr",
+  });
+  // 2026-10-10 is a Saturday.
+  const saturday = (time: string) => Date.parse(`2026-10-10T${time}+02:00`);
+
+  const morning = await getNearbyParking(13.405, 52.52, 100, {
+    arrivalMs: saturday("08:00:00"),
+    durationMinutes: 60,
+  });
+  assert.equal(morning.usableSpaces, 5);
+
+  const midday = await getNearbyParking(13.405, 52.52, 100, {
+    arrivalMs: saturday("11:00:00"),
+    durationMinutes: 60,
+  });
+  assert.equal(midday.restrictedSpaces, 5);
+});

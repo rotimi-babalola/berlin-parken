@@ -157,65 +157,112 @@ const DAY_INDEX: Record<string, number> = {
   so: 0,
 };
 
-export type ValidityWindow = { days: Set<number>; start: number; end: number };
+export type ValidityWindow = { days: number[]; start: number; end: number };
 
 const TIME_RANGE =
   /(\d{1,2})[:.](\d{2})\s*(?:-|–|—|\bbis\b)\s*(\d{1,2})[:.](\d{2})/i;
 const DAY_TOKEN = /(mo|di|mi|do|fr|sa|so)\.?/gi;
+const DAY_RANGE = /(mo|di|mi|do|fr|sa|so)\.?\s*-\s*(mo|di|mi|do|fr|sa|so)\.?/i;
+// Full day names and weekday aggregates never map to exact days here:
+// guessing e.g. Mon–Sat for "werktags" would risk false permission, so any
+// such residue makes the whole text uninterpretable (→ "unknown").
+const UNMAPPABLE_DAY_WORDS =
+  /montag|dienstag|mittwoch|donnerstag|freitag|samstag|sonnabend|sonntag|werktags|wochentags|feiertags?|wochenende/i;
+const ALL_DAYS = [0, 1, 2, 3, 4, 5, 6];
+
+function unionDays(a: number[], b: number[]): number[] {
+  return [...new Set([...a, ...b])].sort((x, y) => x - y);
+}
 
 // Parses mapped time-limit text (e.g. "Mo-Fr 07:00-15:00 Uhr") into weekly
 // windows. Returns null when the text is non-empty but not interpretable,
 // so callers fall back to "unknown" instead of guessing "allowed".
+// Commas and "und" only split chunks that share days/times: "Sa, So
+// 10:00-18:00" is one window for both days, and in "Mo-Fr 07:00-12:00 und
+// 14:00-18:00" the second time inherits Mo-Fr instead of all days.
 export function parseValidityWindows(value: string): ValidityWindow[] | null {
   const text = value.trim();
   if (!text) return [];
-  const segments = text
-    .split(/[;,/]+|\bund\b/i)
-    .map((s) => s.trim())
-    .filter(Boolean);
-  if (!segments.length) return null;
   const windows: ValidityWindow[] = [];
-  for (const segment of segments) {
-    const dayMatches = [...segment.matchAll(DAY_TOKEN)].map((m) =>
-      m[1].toLowerCase(),
-    );
-    const timeMatch = segment.match(TIME_RANGE);
-    const days = new Set<number>();
-    const range = segment.match(
-      /(mo|di|mi|do|fr|sa|so)\.?\s*-\s*(mo|di|mi|do|fr|sa|so)\.?/i,
-    );
-    if (range) {
-      let day = DAY_INDEX[range[1].toLowerCase()];
-      const end = DAY_INDEX[range[2].toLowerCase()];
-      for (;;) {
-        days.add(day);
-        if (day === end) break;
-        day = (day + 1) % 7;
+  // Semicolons separate independent rules; commas/"und" share context.
+  for (const part of text.split(/[;/]+/)) {
+    let pending: number[] | null = null;
+    let last: number[] | null = null;
+    const chunks = part.split(/\bund\b/i).flatMap((s) => s.split(/[,/]+/));
+    for (let chunk of chunks) {
+      chunk = chunk.trim();
+      if (!chunk) continue;
+      if (UNMAPPABLE_DAY_WORDS.test(chunk)) return null;
+      const days = extractDays(chunk);
+      const time = extractTime(chunk);
+      if (time === null) return null;
+      if (days && time) {
+        const resolved = pending ? unionDays(pending, days) : days;
+        windows.push({ days: resolved, ...time });
+        last = resolved;
+        pending = null;
+      } else if (days) {
+        pending = pending ? unionDays(pending, days) : days;
+      } else if (time) {
+        const resolved: number[] = pending ?? last ?? ALL_DAYS;
+        windows.push({ days: resolved, ...time });
+        last = resolved;
+        pending = null;
+      } else {
+        return null;
       }
     }
-    for (const token of dayMatches) days.add(DAY_INDEX[token]);
-    if (!dayMatches.length) for (let d = 0; d < 7; d++) days.add(d);
-    if (!timeMatch) {
-      // Explicit days without hours mean the whole day; anything else is
-      // ambiguous rather than permission.
-      if (!dayMatches.length) return null;
-      windows.push({ days, start: 0, end: 24 * 60 });
-      continue;
-    }
-    const start = Number(timeMatch[1]) * 60 + Number(timeMatch[2]);
-    const end = Number(timeMatch[3]) * 60 + Number(timeMatch[4]);
-    if (
-      !Number.isInteger(start) ||
-      !Number.isInteger(end) ||
-      start < 0 ||
-      start >= 24 * 60 ||
-      end < 0 ||
-      end > 24 * 60
-    )
-      return null;
-    windows.push({ days, start, end });
+    // Explicit days without hours mean the whole day.
+    if (pending) windows.push({ days: pending, start: 0, end: 24 * 60 });
   }
   return windows.length ? windows : null;
+}
+
+function extractDays(chunk: string): number[] | null {
+  const tokens = [...chunk.matchAll(DAY_TOKEN)].map((m) => m[1].toLowerCase());
+  if (!tokens.length) return null;
+  const days = new Set<number>();
+  const range = chunk.match(DAY_RANGE);
+  if (range) {
+    let day = DAY_INDEX[range[1].toLowerCase()];
+    const end = DAY_INDEX[range[2].toLowerCase()];
+    for (let i = 0; i < 7; i++) {
+      days.add(day);
+      if (day === end) break;
+      day = (day + 1) % 7;
+    }
+  }
+  for (const token of tokens) days.add(DAY_INDEX[token]);
+  return [...days].sort((a, b) => a - b);
+}
+
+// Undefined means no time in the chunk (days may be inherited); null means
+// time-like but not interpretable → the whole text is "unknown".
+function extractTime(
+  chunk: string,
+): { start: number; end: number } | null | undefined {
+  const match = chunk.match(TIME_RANGE);
+  if (!match) return /(\d{1,2})[:.](\d{2})/.test(chunk) ? null : undefined;
+  const start = extractMinutes(match[1], match[2], false);
+  const end = extractMinutes(match[3], match[4], true);
+  if (start === null || end === null) return null;
+  // An empty-or-full-day range is ambiguous rather than permission.
+  if (start === end) return null;
+  return { start, end };
+}
+
+function extractMinutes(
+  hour: string,
+  minute: string,
+  allowMidnightEnd: boolean,
+): number | null {
+  const h = Number(hour);
+  const m = Number(minute);
+  if (!Number.isInteger(h) || !Number.isInteger(m) || m < 0 || m > 59)
+    return null;
+  if (h === 24 && m === 0 && allowMidnightEnd) return 24 * 60;
+  if (h < 0 || h > 23) return null;
+  return h * 60 + m;
 }
 
 // Parses mapped max-stay text (e.g. "2 Stunden", "120 Min."). Null means
@@ -251,62 +298,139 @@ const BERLIN_DAY: Record<string, number> = {
   sun: 0,
 };
 
+const berlinWallFormat = new Intl.DateTimeFormat("en-CA", {
+  timeZone: "Europe/Berlin",
+  year: "numeric",
+  month: "2-digit",
+  day: "2-digit",
+  hour: "2-digit",
+  minute: "2-digit",
+  second: "2-digit",
+  hourCycle: "h23",
+});
+
+// Whole-minute Berlin offset (CET +60 / CEST +120) for an instant.
+function berlinOffsetMs(ms: number): number {
+  const parts: Record<string, string> = {};
+  for (const part of berlinWallFormat.formatToParts(new Date(ms)))
+    if (part.type !== "literal") parts[part.type] = part.value;
+  const wallMs = Date.UTC(
+    Number(parts.year),
+    Number(parts.month) - 1,
+    Number(parts.day),
+    Number(parts.hour),
+    Number(parts.minute),
+    Number(parts.second),
+  );
+  return Math.round((wallMs - ms) / 60000) * 60000;
+}
+
 function berlinParts(ms: number): { day: number; minutes: number } {
-  let day = new Date(ms).getDay();
+  const date = new Date(ms);
+  let day = date.getDay();
   let minutes = 0;
-  for (const part of berlinFormat.formatToParts(new Date(ms))) {
+  for (const part of berlinFormat.formatToParts(date)) {
     if (part.type === "weekday")
       day = BERLIN_DAY[part.value.slice(0, 3).toLowerCase()] ?? day;
-    if (part.type === "hour") minutes += Number(part.value) * 60;
-    if (part.type === "minute") minutes += Number(part.value);
+    else if (part.type === "hour") minutes += Number(part.value) * 60;
+    else if (part.type === "minute") minutes += Number(part.value);
   }
-  return { day, minutes: minutes % (24 * 60) };
+  return { day, minutes };
 }
 
 function windowActiveAt(ms: number, windows: ValidityWindow[]): boolean {
   const { day, minutes } = berlinParts(ms);
   return windows.some(
     (window) =>
-      window.days.has(day) &&
+      window.days.includes(day) &&
       (window.start <= window.end
         ? minutes >= window.start && minutes < window.end
         : minutes >= window.start || minutes < window.end),
   );
 }
 
+function segmentOverlapsWindow(
+  day: number,
+  from: number,
+  to: number,
+  window: ValidityWindow,
+): boolean {
+  if (!window.days.includes(day)) return false;
+  if (window.start <= window.end) return from < window.end && to > window.start;
+  return to > window.start || from < window.end;
+}
+
 // Any overlap between the stay [arrival, departure) and a restriction
 // window counts: leaving before the restriction starts is the only safe
-// case, including stays that cross midnight (handled per-minute in Berlin
-// local time).
-export function restrictionOverlapsStay(
+// case. The stay is split at Berlin midnights (at most a few segments for
+// the 24h max stay) instead of polled per minute, so this costs O(days)
+// timezone conversions, not O(minutes).
+function restrictionOverlapsStay(
   windows: ValidityWindow[],
   arrivalMs: number,
   durationMinutes: number,
 ): boolean {
   const departureMs = arrivalMs + durationMinutes * 60 * 1000;
   if (departureMs <= arrivalMs) return windowActiveAt(arrivalMs, windows);
-  for (let t = arrivalMs; t < departureMs; t += 60 * 1000)
-    if (windowActiveAt(t, windows)) return true;
-  return windowActiveAt(departureMs - 1, windows);
+  const offset = berlinOffsetMs(arrivalMs);
+  if (berlinOffsetMs(departureMs - 1) !== offset) {
+    // A DST transition inside the stay: keep the exact per-minute check.
+    for (let t = arrivalMs; t < departureMs; t += 60 * 1000)
+      if (windowActiveAt(t, windows)) return true;
+    return windowActiveAt(departureMs - 1, windows);
+  }
+  let cursor = arrivalMs;
+  while (cursor < departureMs) {
+    const wall = new Date(cursor + offset);
+    const minutesIntoDay =
+      wall.getUTCHours() * 60 +
+      wall.getUTCMinutes() +
+      wall.getUTCSeconds() / 60 +
+      wall.getUTCMilliseconds() / 60000;
+    const segEnd = Math.min(
+      departureMs,
+      cursor + (24 * 60 - minutesIntoDay) * 60 * 1000,
+    );
+    const endMinutes = minutesIntoDay + (segEnd - cursor) / 60000;
+    if (
+      windows.some((window) =>
+        segmentOverlapsWindow(
+          wall.getUTCDay(),
+          minutesIntoDay,
+          endMinutes,
+          window,
+        ),
+      )
+    )
+      return true;
+    cursor = segEnd;
+  }
+  return false;
 }
 
-function textOf(properties: Record<string, unknown>, key: string): string {
-  const value = properties[key];
+export function cleanText(value: unknown): string {
   return typeof value === "string" ? value.trim() : "";
 }
 
-function overlapsOrUnknown(
+function textOf(properties: Record<string, unknown>, key: string): string {
+  return cleanText(properties[key]);
+}
+
+function classifyByValidity(
   raw: string,
   stay: StayInterval | undefined,
-  fallback: ParkingUsability,
+  outcomes: {
+    active: ParkingUsability;
+    inactive: ParkingUsability;
+    noStay: ParkingUsability;
+  },
 ): ParkingUsability {
   const windows = parseValidityWindows(raw);
   if (windows === null) return "unknown";
-  if (!stay) return fallback;
-  if (!windows.length) return fallback;
+  if (!stay || windows.length === 0) return outcomes.noStay;
   return restrictionOverlapsStay(windows, stay.arrivalMs, stay.durationMinutes)
-    ? "restricted"
-    : "usable";
+    ? outcomes.active
+    : outcomes.inactive;
 }
 function classify(
   category: string,
@@ -320,19 +444,30 @@ function classify(
     if (!loadingTime) return "usable";
     // A loading-window ban applies only while it overlaps the stay;
     // uninterpretable hours are never treated as permission.
-    return overlapsOrUnknown(loadingTime, stay, "usable");
+    return classifyByValidity(loadingTime, stay, {
+      active: "restricted",
+      inactive: "usable",
+      noStay: "usable",
+    });
   }
   if (
     ["Parken mit zeitlicher Beschränkung", "Beschränkte Parkdauer"].includes(
       category,
     )
   )
+    // Outside records carry no fee/duration fields in the mapped dataset, so
+    // a timed outside category stays conditional by design; loading-zone
+    // hours only refine the unrestricted/banned categories around this branch.
     return "conditional";
   if (category === "Nutzungsgruppe") return "restricted";
   if (["Parkverbot", "Ladezone", "Beschränkungen"].includes(category)) {
     const loadingTime = textOf(properties, "geltungszeit_ladezone");
     if (!loadingTime) return "restricted";
-    return overlapsOrUnknown(loadingTime, stay, "restricted");
+    return classifyByValidity(loadingTime, stay, {
+      active: "restricted",
+      inactive: "usable",
+      noStay: "restricted",
+    });
   }
   return "unknown";
 }
@@ -360,7 +495,11 @@ function classifyInside(
     )
       return "restricted";
     if (validity) {
-      const outcome = overlapsOrUnknown(validity, stay, "conditional");
+      const outcome = classifyByValidity(validity, stay, {
+        active: "restricted",
+        inactive: "usable",
+        noStay: "conditional",
+      });
       // An inactive time-limited ban falls through to fee/duration checks;
       // an active one (or uninterpretable hours) decides the segment.
       if (outcome !== "usable") return outcome;
@@ -376,18 +515,13 @@ function classifyInside(
   }
   if (fee || validity) {
     if (!validity) return "conditional";
-    const windows = parseValidityWindows(validity);
-    if (windows === null) return "unknown";
-    if (!stay) return "conditional";
     // A fee/time rule outside the stay leaves the segment unrestricted;
     // any overlap keeps it conditional.
-    return restrictionOverlapsStay(
-      windows,
-      stay.arrivalMs,
-      stay.durationMinutes,
-    )
-      ? "conditional"
-      : "usable";
+    return classifyByValidity(validity, stay, {
+      active: "conditional",
+      inactive: "usable",
+      noStay: "conditional",
+    });
   }
   return "usable";
 }
