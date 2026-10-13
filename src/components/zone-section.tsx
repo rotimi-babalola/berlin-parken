@@ -1,9 +1,18 @@
 import { type ContextResult, type ParkingZone } from "@/lib/parking-context";
+import type { StayInterval } from "@/lib/parking";
 import { useLocale } from "@/lib/i18n";
+import { formatDuration } from "@/lib/search-time";
+import { estimateZoneCost, formatEur } from "@/lib/zone-cost";
 import styles from "./address-search.module.css";
 
-// Dumb: managed-zone guidance.
-export function ZoneSection({ zones }: { zones: ContextResult<ParkingZone> }) {
+// Dumb: managed-zone guidance with a per-zone stay-cost explanation.
+export function ZoneSection({
+  zones,
+  stay,
+}: {
+  zones: ContextResult<ParkingZone>;
+  stay?: StayInterval | null;
+}) {
   const { t, locale } = useLocale();
   return (
     <section className={styles.parkingResult} aria-labelledby="zones-title">
@@ -28,6 +37,7 @@ export function ZoneSection({ zones }: { zones: ContextResult<ParkingZone> }) {
               ) : null}
               {zone.fee ? <div>{t("zones.fee", { fee: zone.fee })}</div> : null}
               {zone.note ? <div>{zone.note}</div> : null}
+              {stay ? <ZoneCostLine zone={zone} stay={stay} /> : null}
             </li>
           ))}
         </ul>
@@ -55,5 +65,42 @@ export function ZoneSection({ zones }: { zones: ContextResult<ParkingZone> }) {
           : ""}
       </p>
     </section>
+  );
+}
+
+function ZoneCostLine({
+  zone,
+  stay,
+}: {
+  zone: ParkingZone;
+  stay: StayInterval;
+}) {
+  const { t, locale } = useLocale();
+  const result = estimateZoneCost(zone, stay);
+  // Seasonal rules (e.g. "Advents-Sa") parse as unparseable-hours but mean
+  // local exceptions, not missing data.
+  const reason =
+    result.kind === "guidance" &&
+    result.reason === "unparseable-hours" &&
+    /advent/i.test(zone.hours ?? "")
+      ? t("zones.costReasonLocal")
+      : t("zones.costReasonMissing");
+  const body =
+    result.kind === "estimate"
+      ? t("zones.costEstimate", {
+          total: formatEur(result.totalEur, locale),
+          charged: formatDuration(result.chargedMinutes, locale),
+          stay: formatDuration(result.totalMinutes, locale),
+          rate: `${formatEur(result.rateEur, locale)} / ${formatDuration(result.perMinutes, locale)}`,
+        })
+      : result.kind === "free"
+        ? t("zones.costFree", { hours: zone.hours ?? "" })
+        : t("zones.costGuidance", { reason });
+  return (
+    <div className={styles.zoneCost}>
+      <span className={styles.zoneCostTitle}>{t("zones.costTitle")}</span>
+      <span>{body}</span>
+      <small>{t("zones.costSource")}</small>
+    </div>
   );
 }
