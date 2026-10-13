@@ -1,9 +1,11 @@
 import {
+  cleanText,
   geometryDistance,
   toEpsg25833,
   validGeometry,
   type Geometry,
   type Position,
+  type StayInterval,
 } from "./parking.ts";
 import { fetchWfsFeatures, wfsParams } from "./wfs.ts";
 
@@ -102,7 +104,8 @@ function validCollection(value: unknown): value is Collection {
 }
 
 function text(value: unknown): string | undefined {
-  return typeof value === "string" && value.trim() ? value.trim() : undefined;
+  const cleaned = cleanText(value);
+  return cleaned ? cleaned : undefined;
 }
 
 function dateValue(
@@ -147,12 +150,10 @@ function createSource<T>(
   };
 }
 
-export type Visit = { arrivalMs: number; durationMinutes: number };
-
 function overlapsVisit(
   start: number | undefined,
   end: number | undefined,
-  visit: Visit,
+  visit: StayInterval,
 ): boolean {
   const visitEnd = visit.arrivalMs + visit.durationMinutes * 60 * 1000;
   return !(
@@ -165,7 +166,7 @@ export async function getParkingContext(
   longitude: number,
   latitude: number,
   radiusMeters: number,
-  visit?: Visit,
+  visit?: StayInterval,
 ): Promise<ParkingContext> {
   const [east, north] = toEpsg25833(longitude, latitude);
   const point: Position = [east, north];

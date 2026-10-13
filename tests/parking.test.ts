@@ -1,7 +1,12 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import type { TestContext } from "node:test";
-import { getNearbyParking, toEpsg25833 } from "../src/lib/parking.ts";
+import {
+  getNearbyParking,
+  parseMaxStayMinutes,
+  parseValidityWindows,
+  toEpsg25833,
+} from "../src/lib/parking.ts";
 
 const destination = toEpsg25833(13.405, 52.52);
 
@@ -600,4 +605,191 @@ test("rejects malformed coordinate nesting without throwing during radius filter
 
   assert.equal(result.status, "unavailable");
   assert.match(result.message ?? "", /invalid response/);
+});
+
+// 2026-10-12 is a Monday; offsets pin the Berlin-local expectations.
+const monday = (time: string) => Date.parse(`2026-10-12T${time}+02:00`);
+
+function outsideTimedFeature(category: string, extra: Record<string, unknown>) {
+  const base = feature("outside", 0, 0, 5, category, "Outside Street");
+  return {
+    ...base,
+    properties: {
+      ...(base.properties as Record<string, unknown>),
+      ...extra,
+    },
+  };
+}
+
+function mockInsideFetch(
+  t: TestContext,
+  restrictions: Record<string, unknown>,
+  outside?: unknown[],
+) {
+  t.mock.method(globalThis, "fetch", async (input: string | URL | Request) =>
+    new URL(String(input)).searchParams.get("TYPENAMES") ===
+    "parkplaetze:parkplaetze_aussen"
+      ? collection(outside ?? [], { totalFeatures: outside?.length ?? 0 })
+      : collection([
+          insideFeature("inside", 0, 0, 5, "Inside Street", restrictions),
+        ]),
+  );
+}
+
+test("classifies a time-limited ban against the full stay: inactive means usable, mid-stay start means restricted", async (t) => {
+  const timed = {
+    beschraenkung: "Haltverbot",
+    geltungszeit_der_beschraenkung: "Mo-Fr 07:00-15:00 Uhr",
+  };
+  mockInsideFetch(t, timed);
+
+  const before = await getNearbyParking(13.405, 52.52, 100, {
+    arrivalMs: monday("06:00:00"),
+    durationMinutes: 30,
+  });
+  assert.equal(before.usableSpaces, 5);
+  assert.equal(before.restrictedSpaces, 0);
+
+  const overlapping = await getNearbyParking(13.405, 52.52, 100, {
+    arrivalMs: monday("06:30:00"),
+    durationMinutes: 120,
+  });
+  assert.equal(overlapping.restrictedSpaces, 5);
+  assert.equal(overlapping.usableSpaces, 0);
+  assert.deepEqual(overlapping.streets, []);
+});
+
+test("handles stays crossing midnight against overnight and next-day windows", async (t) => {
+  mockInsideFetch(t, {
+    beschraenkung: "Haltverbot",
+    geltungszeit_der_beschraenkung: "Mo-So 22:00-06:00 Uhr",
+  });
+
+  const overnight = await getNearbyParking(13.405, 52.52, 100, {
+    arrivalMs: monday("23:00:00"),
+    durationMinutes: 120,
+  });
+  assert.equal(overnight.restrictedSpaces, 5);
+
+  const daytime = await getNearbyParking(13.405, 52.52, 100, {
+    arrivalMs: monday("10:00:00"),
+    durationMinutes: 60,
+  });
+  assert.equal(daytime.usableSpaces, 5);
+});
+
+test("handles duration limits explicitly: fitting stays stay conditional, exceeding stays restricted", async (t) => {
+  mockInsideFetch(t, { hoechstparkdauer: "2 Stunden" });
+  const fits = await getNearbyParking(13.405, 52.52, 100, {
+    arrivalMs: monday("10:00:00"),
+    durationMinutes: 60,
+  });
+  assert.equal(fits.conditionalSpaces, 5);
+
+  const exceeds = await getNearbyParking(13.405, 52.52, 100, {
+    arrivalMs: monday("10:00:00"),
+    durationMinutes: 180,
+  });
+  assert.equal(exceeds.restrictedSpaces, 5);
+  assert.deepEqual(exceeds.streets, []);
+});
+
+test("marks reserved segments restricted, never allowed", async (t) => {
+  mockInsideFetch(t, {
+    nur_schwerbehinderte: "ja",
+    geltungszeit_der_beschraenkung: "Mo-Fr 07:00-15:00 Uhr",
+  });
+  const reserved = await getNearbyParking(13.405, 52.52, 100, {
+    arrivalMs: monday("10:00:00"),
+    durationMinutes: 60,
+  });
+  assert.equal(reserved.restrictedSpaces, 5);
+  assert.equal(reserved.usableSpaces, 0);
+});
+
+test("marks uninterpretable time rules unknown, never allowed", async (t) => {
+  mockInsideFetch(t, {
+    beschraenkung: "Haltverbot",
+    geltungszeit_der_beschraenkung: "werktags",
+  });
+  const ambiguous = await getNearbyParking(13.405, 52.52, 100, {
+    arrivalMs: monday("10:00:00"),
+    durationMinutes: 60,
+  });
+  assert.equal(ambiguous.unknownSpaces, 5);
+  assert.equal(ambiguous.usableSpaces, 0);
+  assert.deepEqual(ambiguous.streets, []);
+});
+
+test("marks uninterpretable duration limits unknown, never allowed", async (t) => {
+  mockInsideFetch(t, { hoechstparkdauer: "nach Bedarf" });
+  const vagueDuration = await getNearbyParking(13.405, 52.52, 100, {
+    arrivalMs: monday("10:00:00"),
+    durationMinutes: 60,
+  });
+  assert.equal(vagueDuration.unknownSpaces, 5);
+  assert.equal(vagueDuration.usableSpaces, 0);
+});
+
+test("applies stay windows to outside loading-zone bans, keeping unparsable hours unknown", async (t) => {
+  mockInsideFetch(t, {}, [
+    outsideTimedFeature("Parkverbot", {
+      geltungszeit_ladezone: "Mo-Fr 07:00-15:00 Uhr",
+    }),
+  ]);
+  const outside = await getNearbyParking(13.405, 52.52, 100, {
+    arrivalMs: monday("16:00:00"),
+    durationMinutes: 60,
+  });
+  assert.equal(outside.usableSpaces, 10);
+});
+
+test("parses mapped validity and duration text without guessing", () => {
+  assert.ok(parseValidityWindows("Mo-Fr 07:00-15:00 Uhr")?.length === 1);
+  assert.equal(parseValidityWindows("werktags"), null);
+  assert.deepEqual(parseValidityWindows(""), []);
+  assert.equal(parseMaxStayMinutes("2 Stunden"), 120);
+  assert.equal(parseMaxStayMinutes("nach Bedarf"), null);
+});
+
+test("rejects invalid clock times instead of guessing permission", () => {
+  assert.equal(parseValidityWindows("Mo-Fr 07:99-08:00"), null);
+  assert.equal(parseValidityWindows("Mo-Fr 08:00-08:00"), null);
+  assert.equal(parseValidityWindows("Montag-Freitag 07:00-15:00"), null);
+  assert.equal(parseValidityWindows("werktags 07:00-15:00"), null);
+  assert.equal(parseValidityWindows("Mo-Fr 07:00-24:00 Uhr")?.length, 1);
+});
+
+test("shares days and times across comma and und chunks", () => {
+  assert.deepEqual(parseValidityWindows("Sa, So 10:00-18:00 Uhr"), [
+    { days: [0, 6], start: 600, end: 1080 },
+  ]);
+  assert.deepEqual(
+    parseValidityWindows("Mo-Fr 07:00-12:00 und 14:00-18:00 Uhr"),
+    [
+      { days: [1, 2, 3, 4, 5], start: 420, end: 720 },
+      { days: [1, 2, 3, 4, 5], start: 840, end: 1080 },
+    ],
+  );
+});
+
+test("treats a shared weekend window as usable on Saturday morning", async (t) => {
+  mockInsideFetch(t, {
+    beschraenkung: "Haltverbot",
+    geltungszeit_der_beschraenkung: "Sa, So 10:00-18:00 Uhr",
+  });
+  // 2026-10-10 is a Saturday.
+  const saturday = (time: string) => Date.parse(`2026-10-10T${time}+02:00`);
+
+  const morning = await getNearbyParking(13.405, 52.52, 100, {
+    arrivalMs: saturday("08:00:00"),
+    durationMinutes: 60,
+  });
+  assert.equal(morning.usableSpaces, 5);
+
+  const midday = await getNearbyParking(13.405, 52.52, 100, {
+    arrivalMs: saturday("11:00:00"),
+    durationMinutes: 60,
+  });
+  assert.equal(midday.restrictedSpaces, 5);
 });

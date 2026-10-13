@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
-import { getNearbyParking } from "@/lib/parking";
-import { getParkingContext, type Visit } from "@/lib/parking-context";
+import { getNearbyParking, type StayInterval } from "@/lib/parking";
+import { getParkingContext } from "@/lib/parking-context";
 import { parseArrivalInstant, parseDuration } from "@/lib/search-time";
 
 export const runtime = "nodejs";
@@ -29,7 +29,7 @@ export async function GET(request: Request) {
 
   const arrivalParam = params.get("arrival");
   const durationParam = params.get("duration");
-  let visit: Visit | undefined;
+  let visit: StayInterval | undefined;
   if (arrivalParam !== null || durationParam !== null) {
     if (arrivalParam === null || durationParam === null) {
       return NextResponse.json(
@@ -49,7 +49,7 @@ export async function GET(request: Request) {
   }
 
   const [parking, context] = await Promise.all([
-    getNearbyParking(longitude, latitude, radiusMeters),
+    getNearbyParking(longitude, latitude, radiusMeters, visit),
     getParkingContext(longitude, latitude, radiusMeters, visit),
   ]);
   return NextResponse.json(
