@@ -100,7 +100,13 @@ export function SignalDetails({ search, parking, zones, events }: Props) {
             </span>
           </summary>
           <div className={styles.detailBody}>
-            <ZoneSection zones={zones} />
+            <ZoneSection
+              zones={zones}
+              stay={{
+                arrivalMs: search.arrivalMs,
+                durationMinutes: search.durationMinutes,
+              }}
+            />
           </div>
         </details>
         <details>
