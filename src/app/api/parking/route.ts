@@ -49,7 +49,7 @@ export async function GET(request: Request) {
   }
 
   const [parking, context] = await Promise.all([
-    getNearbyParking(longitude, latitude, radiusMeters),
+    getNearbyParking(longitude, latitude, radiusMeters, visit),
     getParkingContext(longitude, latitude, radiusMeters, visit),
   ]);
   return NextResponse.json(

@@ -145,41 +145,250 @@ export function geometryDistance(point: Position, geometry: Geometry): number {
   return distance;
 }
 
-function classify(category: string, publicLand: string): ParkingUsability {
-  if (category === "Parken (ohne Beschränkungen)")
-    return publicLand === "Ja" ? "usable" : "restricted";
+export type StayInterval = { arrivalMs: number; durationMinutes: number };
+
+const DAY_INDEX: Record<string, number> = {
+  mo: 1,
+  di: 2,
+  mi: 3,
+  do: 4,
+  fr: 5,
+  sa: 6,
+  so: 0,
+};
+
+export type ValidityWindow = { days: Set<number>; start: number; end: number };
+
+const TIME_RANGE =
+  /(\d{1,2})[:.](\d{2})\s*(?:-|–|—|\bbis\b)\s*(\d{1,2})[:.](\d{2})/i;
+const DAY_TOKEN = /(mo|di|mi|do|fr|sa|so)\.?/gi;
+
+// Parses mapped time-limit text (e.g. "Mo-Fr 07:00-15:00 Uhr") into weekly
+// windows. Returns null when the text is non-empty but not interpretable,
+// so callers fall back to "unknown" instead of guessing "allowed".
+export function parseValidityWindows(value: string): ValidityWindow[] | null {
+  const text = value.trim();
+  if (!text) return [];
+  const segments = text
+    .split(/[;,/]+|\bund\b/i)
+    .map((s) => s.trim())
+    .filter(Boolean);
+  if (!segments.length) return null;
+  const windows: ValidityWindow[] = [];
+  for (const segment of segments) {
+    const dayMatches = [...segment.matchAll(DAY_TOKEN)].map((m) =>
+      m[1].toLowerCase(),
+    );
+    const timeMatch = segment.match(TIME_RANGE);
+    const days = new Set<number>();
+    const range = segment.match(
+      /(mo|di|mi|do|fr|sa|so)\.?\s*-\s*(mo|di|mi|do|fr|sa|so)\.?/i,
+    );
+    if (range) {
+      let day = DAY_INDEX[range[1].toLowerCase()];
+      const end = DAY_INDEX[range[2].toLowerCase()];
+      for (;;) {
+        days.add(day);
+        if (day === end) break;
+        day = (day + 1) % 7;
+      }
+    }
+    for (const token of dayMatches) days.add(DAY_INDEX[token]);
+    if (!dayMatches.length) for (let d = 0; d < 7; d++) days.add(d);
+    if (!timeMatch) {
+      // Explicit days without hours mean the whole day; anything else is
+      // ambiguous rather than permission.
+      if (!dayMatches.length) return null;
+      windows.push({ days, start: 0, end: 24 * 60 });
+      continue;
+    }
+    const start = Number(timeMatch[1]) * 60 + Number(timeMatch[2]);
+    const end = Number(timeMatch[3]) * 60 + Number(timeMatch[4]);
+    if (
+      !Number.isInteger(start) ||
+      !Number.isInteger(end) ||
+      start < 0 ||
+      start >= 24 * 60 ||
+      end < 0 ||
+      end > 24 * 60
+    )
+      return null;
+    windows.push({ days, start, end });
+  }
+  return windows.length ? windows : null;
+}
+
+// Parses mapped max-stay text (e.g. "2 Stunden", "120 Min."). Null means
+// the limit exists but is not interpretable → "unknown".
+export function parseMaxStayMinutes(value: string): number | null {
+  const text = value.trim().toLowerCase().replace(",", ".");
+  const match = text.match(
+    /(\d+(?:\.\d+)?)\s*(std\.?|stunden?|h|hour|minutes?|min\.?)/i,
+  );
+  if (!match) return null;
+  const amount = Number(match[1]);
+  if (!Number.isFinite(amount) || amount <= 0) return null;
+  const unit = match[2].toLowerCase();
+  const minutes = unit.startsWith("min") ? amount : amount * 60;
+  return Math.round(minutes);
+}
+
+const berlinFormat = new Intl.DateTimeFormat("en-GB", {
+  timeZone: "Europe/Berlin",
+  weekday: "short",
+  hour: "2-digit",
+  minute: "2-digit",
+  hourCycle: "h23",
+});
+
+const BERLIN_DAY: Record<string, number> = {
+  mon: 1,
+  tue: 2,
+  wed: 3,
+  thu: 4,
+  fri: 5,
+  sat: 6,
+  sun: 0,
+};
+
+function berlinParts(ms: number): { day: number; minutes: number } {
+  let day = new Date(ms).getDay();
+  let minutes = 0;
+  for (const part of berlinFormat.formatToParts(new Date(ms))) {
+    if (part.type === "weekday")
+      day = BERLIN_DAY[part.value.slice(0, 3).toLowerCase()] ?? day;
+    if (part.type === "hour") minutes += Number(part.value) * 60;
+    if (part.type === "minute") minutes += Number(part.value);
+  }
+  return { day, minutes: minutes % (24 * 60) };
+}
+
+function windowActiveAt(ms: number, windows: ValidityWindow[]): boolean {
+  const { day, minutes } = berlinParts(ms);
+  return windows.some(
+    (window) =>
+      window.days.has(day) &&
+      (window.start <= window.end
+        ? minutes >= window.start && minutes < window.end
+        : minutes >= window.start || minutes < window.end),
+  );
+}
+
+// Any overlap between the stay [arrival, departure) and a restriction
+// window counts: leaving before the restriction starts is the only safe
+// case, including stays that cross midnight (handled per-minute in Berlin
+// local time).
+export function restrictionOverlapsStay(
+  windows: ValidityWindow[],
+  arrivalMs: number,
+  durationMinutes: number,
+): boolean {
+  const departureMs = arrivalMs + durationMinutes * 60 * 1000;
+  if (departureMs <= arrivalMs) return windowActiveAt(arrivalMs, windows);
+  for (let t = arrivalMs; t < departureMs; t += 60 * 1000)
+    if (windowActiveAt(t, windows)) return true;
+  return windowActiveAt(departureMs - 1, windows);
+}
+
+function textOf(properties: Record<string, unknown>, key: string): string {
+  const value = properties[key];
+  return typeof value === "string" ? value.trim() : "";
+}
+
+function overlapsOrUnknown(
+  raw: string,
+  stay: StayInterval | undefined,
+  fallback: ParkingUsability,
+): ParkingUsability {
+  const windows = parseValidityWindows(raw);
+  if (windows === null) return "unknown";
+  if (!stay) return fallback;
+  if (!windows.length) return fallback;
+  return restrictionOverlapsStay(windows, stay.arrivalMs, stay.durationMinutes)
+    ? "restricted"
+    : "usable";
+}
+function classify(
+  category: string,
+  publicLand: string,
+  properties: Record<string, unknown> = {},
+  stay?: StayInterval,
+): ParkingUsability {
+  if (category === "Parken (ohne Beschränkungen)") {
+    if (publicLand !== "Ja") return "restricted";
+    const loadingTime = textOf(properties, "geltungszeit_ladezone");
+    if (!loadingTime) return "usable";
+    // A loading-window ban applies only while it overlaps the stay;
+    // uninterpretable hours are never treated as permission.
+    return overlapsOrUnknown(loadingTime, stay, "usable");
+  }
   if (
     ["Parken mit zeitlicher Beschränkung", "Beschränkte Parkdauer"].includes(
       category,
     )
   )
     return "conditional";
-  if (
-    ["Parkverbot", "Nutzungsgruppe", "Ladezone", "Beschränkungen"].includes(
-      category,
-    )
-  )
-    return "restricted";
+  if (category === "Nutzungsgruppe") return "restricted";
+  if (["Parkverbot", "Ladezone", "Beschränkungen"].includes(category)) {
+    const loadingTime = textOf(properties, "geltungszeit_ladezone");
+    if (!loadingTime) return "restricted";
+    return overlapsOrUnknown(loadingTime, stay, "restricted");
+  }
   return "unknown";
 }
 
-function classifyInside(properties: Record<string, unknown>): ParkingUsability {
+function classifyInside(
+  properties: Record<string, unknown>,
+  stay?: StayInterval,
+): ParkingUsability {
   if (properties.oeffentliches_strassenland !== "Ja") return "restricted";
   if (
     properties.nur_schwerbehinderte === "ja" ||
     properties.carsharing === "ja"
   )
     return "restricted";
-  if (properties.beschraenkung || properties.grund_fuer_beschraenkung)
-    return properties.geltungszeit_der_beschraenkung
-      ? "conditional"
-      : "restricted";
-  if (
-    properties.parkgebuehr ||
-    properties.hoechstparkdauer ||
-    properties.geltungszeit_der_beschraenkung
-  )
+  const restriction =
+    `${textOf(properties, "beschraenkung")} ${textOf(properties, "grund_fuer_beschraenkung")}`.trim();
+  const validity = textOf(properties, "geltungszeit_der_beschraenkung");
+  const fee = textOf(properties, "parkgebuehr");
+  const maxStay = textOf(properties, "hoechstparkdauer");
+  if (restriction) {
+    if (
+      /bewohner|anwohner|carsharing|schwerbehindert|taxi|bus|behindert/i.test(
+        restriction,
+      )
+    )
+      return "restricted";
+    if (validity) {
+      const outcome = overlapsOrUnknown(validity, stay, "conditional");
+      // An inactive time-limited ban falls through to fee/duration checks;
+      // an active one (or uninterpretable hours) decides the segment.
+      if (outcome !== "usable") return outcome;
+    } else {
+      return "restricted";
+    }
+  }
+  if (maxStay) {
+    const maxMinutes = parseMaxStayMinutes(maxStay);
+    if (maxMinutes === null) return "unknown";
+    if (stay && stay.durationMinutes > maxMinutes) return "restricted";
     return "conditional";
+  }
+  if (fee || validity) {
+    if (!validity) return "conditional";
+    const windows = parseValidityWindows(validity);
+    if (windows === null) return "unknown";
+    if (!stay) return "conditional";
+    // A fee/time rule outside the stay leaves the segment unrestricted;
+    // any overlap keeps it conditional.
+    return restrictionOverlapsStay(
+      windows,
+      stay.arrivalMs,
+      stay.durationMinutes,
+    )
+      ? "conditional"
+      : "usable";
+  }
   return "usable";
 }
 
@@ -238,6 +447,7 @@ export async function getNearbyParking(
   longitude: number,
   latitude: number,
   radiusMeters: number,
+  stay?: StayInterval,
 ): Promise<ParkingSummary> {
   const unavailable = (message: string): ParkingSummary => ({
     status: "unavailable",
@@ -282,6 +492,7 @@ export async function getNearbyParking(
       : incomplete
         ? "Some nearby records may be missing because the service page limit was reached."
         : undefined,
+    stay,
   );
 }
 
@@ -292,6 +503,7 @@ function summarize(
   fetchedAt: string,
   partial?: boolean,
   message?: string,
+  stay?: StayInterval,
 ): ParkingSummary {
   features = features.filter(
     (feature) =>
@@ -324,10 +536,12 @@ function summarize(
     );
     const capacity = Number.isFinite(spaces) && spaces > 0 ? spaces : 0;
     const usability = inside
-      ? classifyInside(properties)
+      ? classifyInside(properties, stay)
       : classify(
           String(properties.category ?? ""),
           String(properties.oeffentlichesstrassenland ?? ""),
+          properties,
+          stay,
         );
     result.mappedSpaces += capacity;
     if (usability === "usable") result.usableSpaces += capacity;
