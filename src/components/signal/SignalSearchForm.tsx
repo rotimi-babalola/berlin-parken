@@ -18,6 +18,8 @@ type Props = {
   timeError: boolean;
   activeIndex: number;
   suggestions: AddressSuggestion[];
+  recentsHeader: string | null;
+  recentsEmpty: boolean;
   suggestionState: "idle" | "loading" | "empty" | "error" | "ready";
   submitError: boolean;
   liveMessage: string;
@@ -25,6 +27,8 @@ type Props = {
   arrivalRef: RefObject<HTMLInputElement | null>;
   optionRefs: RefObject<Array<HTMLLIElement | null>>;
   onQueryChange: (value: string) => void;
+  onInputFocus: () => void;
+  onInputBlur: () => void;
   onChooseSuggestion: (suggestion: AddressSuggestion) => void;
   onKeyDown: (event: KeyboardEvent<HTMLInputElement>) => void;
   onSubmit: (event: SubmitEvent<HTMLFormElement>) => void;
@@ -47,6 +51,8 @@ export function SignalSearchForm({
   timeError,
   activeIndex,
   suggestions,
+  recentsHeader,
+  recentsEmpty,
   suggestionState,
   submitError,
   liveMessage,
@@ -54,6 +60,8 @@ export function SignalSearchForm({
   arrivalRef,
   optionRefs,
   onQueryChange,
+  onInputFocus,
+  onInputBlur,
   onChooseSuggestion,
   onKeyDown,
   onSubmit,
@@ -65,6 +73,9 @@ export function SignalSearchForm({
   const inputId = useId();
   const listId = useId();
   const { t, locale } = useLocale();
+  // The dropdown shows live suggestions, recent searches, or the empty-history
+  // note — one expression gates both the list and aria-expanded.
+  const listOpen = suggestions.length > 0 || recentsEmpty;
 
   return (
     // noValidate: arrival/range hints stay as picker aids; this form's own
@@ -79,12 +90,12 @@ export function SignalSearchForm({
             type="search"
             role="combobox"
             autoComplete="off"
-            maxLength={120}
+            maxLength={200}
             value={query}
             placeholder={t("search.placeholder")}
             aria-autocomplete="list"
             aria-controls={listId}
-            aria-expanded={suggestions.length > 0}
+            aria-expanded={listOpen}
             aria-activedescendant={
               activeIndex >= 0 && suggestions.length
                 ? `${listId}-option-${activeIndex}`
@@ -94,37 +105,54 @@ export function SignalSearchForm({
             aria-invalid={submitError || undefined}
             aria-busy={suggestionState === "loading"}
             onChange={(event) => onQueryChange(event.target.value)}
+            onFocus={onInputFocus}
+            onBlur={onInputBlur}
             onKeyDown={onKeyDown}
           />
           {suggestionState === "loading" && (
             <span className={styles.spinner} aria-hidden="true" />
           )}
-          {suggestions.length > 0 && (
+          {listOpen && (
             <ul
               className={styles.suggestions}
               id={listId}
               role="listbox"
               aria-label={t("search.suggestionsLabel")}
             >
-              {suggestions.map((suggestion, index) => (
+              {recentsHeader && (
                 <li
-                  ref={(node) => {
-                    optionRefs.current[index] = node;
-                  }}
-                  className={`${styles.suggestion} ${activeIndex === index ? styles.activeSuggestion : ""}`}
-                  id={`${listId}-option-${index}`}
-                  key={suggestion.id}
-                  role="option"
-                  aria-selected={activeIndex === index}
-                  onMouseDown={(event) => event.preventDefault()}
-                  onClick={() => onChooseSuggestion(suggestion)}
+                  role="presentation"
+                  className={styles.recentsHeader}
+                  aria-hidden="true"
                 >
-                  <span>
-                    {suggestion.label}
-                    <small>{suggestion.detail}</small>
-                  </span>
+                  {recentsHeader}
                 </li>
-              ))}
+              )}
+              {recentsEmpty ? (
+                <li role="presentation" className={styles.recentsEmpty}>
+                  {t("search.historyEmpty")}
+                </li>
+              ) : (
+                suggestions.map((suggestion, index) => (
+                  <li
+                    ref={(node) => {
+                      optionRefs.current[index] = node;
+                    }}
+                    className={`${styles.suggestion} ${activeIndex === index ? styles.activeSuggestion : ""}`}
+                    id={`${listId}-option-${index}`}
+                    key={suggestion.id}
+                    role="option"
+                    aria-selected={activeIndex === index}
+                    onMouseDown={(event) => event.preventDefault()}
+                    onClick={() => onChooseSuggestion(suggestion)}
+                  >
+                    <span>
+                      {suggestion.label}
+                      <small>{suggestion.detail}</small>
+                    </span>
+                  </li>
+                ))
+              )}
             </ul>
           )}
         </div>
@@ -133,22 +161,24 @@ export function SignalSearchForm({
           <span aria-hidden="true">↗</span>
         </button>
       </div>
-      <div className={styles.radiusLine}>
-        <label htmlFor={`${inputId}-radius`}>{t("search.radiusLabel")}</label>
-        <output htmlFor={`${inputId}-radius`} aria-live="off">
-          {radius < 1000 ? `${radius} m` : "1 km"}
-        </output>
+      <div className={styles.radiusGroup}>
+        <div className={styles.radiusLine}>
+          <label htmlFor={`${inputId}-radius`}>{t("search.radiusLabel")}</label>
+          <output htmlFor={`${inputId}-radius`} aria-live="off">
+            {radius < 1000 ? `${radius} m` : "1 km"}
+          </output>
+        </div>
+        <input
+          className={styles.radiusInput}
+          id={`${inputId}-radius`}
+          type="range"
+          min="100"
+          max="1000"
+          step="100"
+          value={radius}
+          onChange={(event) => onRadiusChange(Number(event.target.value))}
+        />
       </div>
-      <input
-        className={styles.radiusInput}
-        id={`${inputId}-radius`}
-        type="range"
-        min="100"
-        max="1000"
-        step="100"
-        value={radius}
-        onChange={(event) => onRadiusChange(Number(event.target.value))}
-      />
       <div className={styles.timeRow}>
         <div className={styles.timeField}>
           <label htmlFor={`${inputId}-arrival`}>

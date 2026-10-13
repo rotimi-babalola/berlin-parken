@@ -73,16 +73,18 @@ export function missingContext(reason?: string): ParkingContext {
   };
 }
 
-export function ensureParkingContext(
-  value: Record<string, unknown>,
-): ParkingContext {
+export function ensureParkingContext(value: unknown): ParkingContext {
+  const record =
+    value && typeof value === "object"
+      ? (value as Record<string, unknown>)
+      : {};
   const zones =
-    value.zones && typeof value.zones === "object"
-      ? (value.zones as ParkingContext["zones"])
+    record.zones && typeof record.zones === "object"
+      ? (record.zones as ParkingContext["zones"])
       : missingContext("Parking-zone data is temporarily unavailable.").zones;
   const events =
-    value.events && typeof value.events === "object"
-      ? (value.events as ParkingContext["events"])
+    record.events && typeof record.events === "object"
+      ? (record.events as ParkingContext["events"])
       : missingContext("Planned-event data is temporarily unavailable.").events;
   return { zones, events };
 }

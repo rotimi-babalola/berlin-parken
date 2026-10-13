@@ -62,6 +62,16 @@ test("searches, selects an address, and shows nearby parking", async ({
   await radius.press("ArrowLeft");
   await page.getByRole("button", { name: "Check nearby streets" }).click();
 
+  await page.waitForURL(/\/results\?/);
+  await expect(page.getByRole("link", { name: "← Home" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "New search" })).toBeVisible();
+  await page.setViewportSize({ width: 375, height: 812 });
+  await expect(
+    page.getByRole("button", { name: "Check nearby streets" }),
+  ).toBeVisible();
+  expect(
+    await page.evaluate(() => document.documentElement.scrollWidth),
+  ).toBeLessThanOrEqual(375);
   const strip = page
     .locator("section")
     .filter({ hasText: "WHAT YOU CAN CHECK" });
@@ -74,6 +84,18 @@ test("searches, selects an address, and shows nearby parking", async ({
     "30",
   );
   expect(requestedRadius).toBe("700");
+
+  await expect(
+    page.getByRole("combobox", { name: "Destination address" }),
+  ).toHaveValue("Alexanderplatz 1");
+  const editRadius = page.getByRole("slider");
+  await editRadius.focus();
+  await editRadius.press("End");
+  await page.getByRole("button", { name: "Check nearby streets" }).click();
+  await page.waitForURL(/radius=1000/);
+  await expect(
+    page.getByRole("heading", { name: "Alexanderplatz 1" }),
+  ).toBeVisible();
   expect(requestedDuration).toBe("120");
   expect(Number.isFinite(Date.parse(requestedArrival ?? ""))).toBe(true);
 });
@@ -130,6 +152,7 @@ test("shows the Bescheid report, side rail, and event carousel", async ({
   await page.getByRole("option", { name: /Alexanderplatz 1/ }).click();
   await page.getByRole("button", { name: "Check nearby streets" }).click();
 
+  await page.waitForURL(/\/results\?/);
   const strip = page
     .locator("section")
     .filter({ hasText: "WHAT YOU CAN CHECK" });
@@ -275,4 +298,27 @@ test("recovers from a failed parking request with keyboard use on narrow screens
         fullPage: true,
       });
   }
+});
+
+test("shows recent searches when the destination input is focused", async ({
+  page,
+}) => {
+  await page.goto("/");
+  const address = page.getByRole("combobox", { name: "Destination address" });
+  await address.focus();
+  await expect(page.getByText("No recent searches yet")).toBeVisible();
+
+  await address.fill("Alexanderplatz");
+  await page.getByRole("option", { name: /Alexanderplatz 1/ }).click();
+  await page.getByRole("button", { name: "Check nearby streets" }).click();
+  await page.waitForURL(/\/results\?/);
+
+  await page.goto("/");
+  await page.getByRole("combobox", { name: "Destination address" }).focus();
+  await page.getByRole("option", { name: /Alexanderplatz 1/ }).click();
+  await expect(
+    page.getByRole("combobox", { name: "Destination address" }),
+  ).toHaveValue("Alexanderplatz 1");
+  await page.getByRole("button", { name: "Check nearby streets" }).click();
+  await page.waitForURL(/\/results\?.*label=Alexanderplatz/);
 });

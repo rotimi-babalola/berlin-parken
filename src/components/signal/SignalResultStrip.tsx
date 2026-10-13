@@ -20,7 +20,7 @@ function formatRadius(meters: number): string {
 }
 
 // Dumb: glanceable result strip (metric + map + checklist).
-// All data comes from props; fetching lives in useAddressSearch.
+// All data comes from props; fetching lives on the results page.
 export function SignalResultStrip({
   search,
   parking,

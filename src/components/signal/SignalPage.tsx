@@ -1,34 +1,17 @@
 "use client";
 
 import { useAddressSearch } from "@/hooks/use-address-search";
-import { ensureParkingContext } from "@/lib/parking-context";
-import { SignalDetails } from "./SignalDetails";
 import { SignalFooter } from "./SignalFooter";
 import { SignalHeader } from "./SignalHeader";
 import { SignalHero } from "./SignalHero";
-import { SignalResultStrip } from "./SignalResultStrip";
 import { SignalSearchForm } from "./SignalSearchForm";
 import { SignalSearchPanel } from "./SignalSearchPanel";
 import styles from "./signal.module.css";
 
-// Smart container: owns search + parking state via useAddressSearch,
-// derives zone/event context, and composes dumb Signal sections.
-// It fetches nothing itself and renders no markup of its own.
+// Search-only landing: the form navigates to /results (shareable URL).
+// Result fetching and rendering live on the results page.
 export function SignalPage() {
   const search = useAddressSearch();
-  const { zones, events } = ensureParkingContext(
-    (search.parking ?? {}) as Record<string, unknown>,
-  );
-  const detailsReady =
-    !search.parkingLoading &&
-    search.searchReady &&
-    search.parking &&
-    search.parking.status !== "unavailable"
-      ? {
-          search: search.searchReady,
-          parking: search.parking,
-        }
-      : null;
 
   return (
     <div className={styles.page}>
@@ -46,7 +29,9 @@ export function SignalPage() {
               durationMinutes={search.durationMinutes}
               timeError={search.timeError}
               activeIndex={search.activeIndex}
-              suggestions={search.visibleSuggestions}
+              suggestions={search.dropdownItems}
+              recentsHeader={search.recentsHeader}
+              recentsEmpty={search.recentsEmpty}
               suggestionState={search.suggestionState}
               submitError={search.submitError}
               liveMessage={search.liveMessage}
@@ -54,6 +39,8 @@ export function SignalPage() {
               arrivalRef={search.arrivalRef}
               optionRefs={search.optionRefs}
               onQueryChange={search.handleQueryChange}
+              onInputFocus={search.handleInputFocus}
+              onInputBlur={search.handleInputBlur}
               onChooseSuggestion={search.chooseSuggestion}
               onKeyDown={search.handleKeyDown}
               onSubmit={search.handleSubmit}
@@ -64,22 +51,6 @@ export function SignalPage() {
             />
           </SignalSearchPanel>
         </SignalHero>
-        <SignalResultStrip
-          search={search.searchReady}
-          parking={search.parking}
-          loading={search.parkingLoading}
-          zones={zones}
-          events={events}
-          onRetry={search.retryParking}
-        />
-        {detailsReady && (
-          <SignalDetails
-            search={detailsReady.search}
-            parking={detailsReady.parking}
-            zones={zones}
-            events={events}
-          />
-        )}
       </main>
       <SignalFooter />
     </div>
