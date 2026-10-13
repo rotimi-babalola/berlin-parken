@@ -408,6 +408,80 @@ function restrictionOverlapsStay(
   return false;
 }
 
+// Charged minutes of the stay [arrival, departure) covered by any window.
+// Same segment splitting as restrictionOverlapsStay: O(days) timezone
+// conversions, with an exact per-minute fallback across a DST transition.
+// Overlapping windows are unioned so shared minutes count once.
+export function chargedMinutesInWindows(
+  windows: ValidityWindow[],
+  arrivalMs: number,
+  durationMinutes: number,
+): number {
+  if (
+    !windows.length ||
+    !Number.isFinite(arrivalMs) ||
+    !Number.isFinite(durationMinutes) ||
+    durationMinutes <= 0
+  )
+    return 0;
+  const departureMs = arrivalMs + durationMinutes * 60 * 1000;
+  if (departureMs <= arrivalMs) return 0;
+  const offset = berlinOffsetMs(arrivalMs);
+  if (berlinOffsetMs(departureMs - 1) !== offset) {
+    let charged = 0;
+    for (let t = arrivalMs; t < departureMs; t += 60 * 1000)
+      if (windowActiveAt(t, windows)) charged++;
+    return charged;
+  }
+  let charged = 0;
+  let cursor = arrivalMs;
+  while (cursor < departureMs) {
+    const wall = new Date(cursor + offset);
+    const minutesIntoDay =
+      wall.getUTCHours() * 60 +
+      wall.getUTCMinutes() +
+      wall.getUTCSeconds() / 60 +
+      wall.getUTCMilliseconds() / 60000;
+    const segEnd = Math.min(
+      departureMs,
+      cursor + (24 * 60 - minutesIntoDay) * 60 * 1000,
+    );
+    const endMinutes = minutesIntoDay + (segEnd - cursor) / 60000;
+    const day = wall.getUTCDay();
+    const intervals: Array<[number, number]> = [];
+    for (const window of windows) {
+      if (!window.days.includes(day)) continue;
+      if (window.start <= window.end) {
+        const start = Math.max(minutesIntoDay, window.start);
+        const end = Math.min(endMinutes, window.end);
+        if (end > start) intervals.push([start, end]);
+      } else {
+        const firstEnd = Math.min(endMinutes, 24 * 60);
+        if (firstEnd > Math.max(minutesIntoDay, window.start))
+          intervals.push([Math.max(minutesIntoDay, window.start), firstEnd]);
+        if (Math.min(endMinutes, window.end) > minutesIntoDay)
+          intervals.push([minutesIntoDay, Math.min(endMinutes, window.end)]);
+      }
+    }
+    if (intervals.length) {
+      intervals.sort((a, b) => a[0] - b[0]);
+      let [currentStart, currentEnd] = intervals[0];
+      for (let i = 1; i < intervals.length; i++) {
+        const [start, end] = intervals[i];
+        if (start <= currentEnd) currentEnd = Math.max(currentEnd, end);
+        else {
+          charged += currentEnd - currentStart;
+          currentStart = start;
+          currentEnd = end;
+        }
+      }
+      charged += currentEnd - currentStart;
+    }
+    cursor = segEnd;
+  }
+  return Math.round(charged);
+}
+
 export function cleanText(value: unknown): string {
   return typeof value === "string" ? value.trim() : "";
 }

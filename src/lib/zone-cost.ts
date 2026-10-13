@@ -1,4 +1,5 @@
 import {
+  chargedMinutesInWindows,
   parseValidityWindows,
   type StayInterval,
   type ValidityWindow,
@@ -8,7 +9,6 @@ export type FeeRate = { amountEur: number; perMinutes: number };
 export type ZoneCostInput = {
   hours?: string;
   fee?: string;
-  note?: string;
 };
 export type ZoneCost =
   | {
@@ -38,7 +38,8 @@ export function parseFeeRate(value: string): FeeRate | null {
   const amount = text.match(/(\d+(?:[.,]\d+)?)\s*(€|euro)/i);
   if (!amount) return null;
   const rate = Number(amount[1].replace(",", "."));
-  if (!Number.isFinite(rate) || rate <= 0) return null;
+  // A zero amount ("0 €") is a free zone, not missing data.
+  if (!Number.isFinite(rate) || rate < 0) return null;
   const after = text.slice((amount.index ?? 0) + amount[0].length);
   const unit = after.match(/(\d+(?:[.,]\d+)?)?\s*(min|std|stunde|hour|h)\b/i);
   if (!unit) return { amountEur: rate, perMinutes: 60 };
@@ -65,60 +66,6 @@ export function parseZoneHours(value: string): ValidityWindow[] | null {
   return parseValidityWindows(normalized);
 }
 
-const berlinFormat = new Intl.DateTimeFormat("en-GB", {
-  timeZone: "Europe/Berlin",
-  weekday: "short",
-  hour: "2-digit",
-  minute: "2-digit",
-  hourCycle: "h23",
-});
-
-const BERLIN_DAY: Record<string, number> = {
-  mon: 1,
-  tue: 2,
-  wed: 3,
-  thu: 4,
-  fri: 5,
-  sat: 6,
-  sun: 0,
-};
-
-function berlinMinute(ms: number): { day: number; minutes: number } {
-  const date = new Date(ms);
-  let day = date.getDay();
-  let minutes = 0;
-  for (const part of berlinFormat.formatToParts(date)) {
-    if (part.type === "weekday")
-      day = BERLIN_DAY[part.value.slice(0, 3).toLowerCase()] ?? day;
-    else if (part.type === "hour") minutes += Number(part.value) * 60;
-    else if (part.type === "minute") minutes += Number(part.value);
-  }
-  return { day, minutes };
-}
-
-function chargedMinutes(
-  windows: ValidityWindow[],
-  arrivalMs: number,
-  durationMinutes: number,
-): number {
-  // ponytail: per-minute scan, stays capped at 24h so ≤1440 iterations
-  let charged = 0;
-  for (let i = 0; i < durationMinutes; i++) {
-    const { day, minutes } = berlinMinute(arrivalMs + i * 60_000);
-    if (
-      windows.some(
-        (w) =>
-          w.days.includes(day) &&
-          (w.start <= w.end
-            ? minutes >= w.start && minutes < w.end
-            : minutes >= w.start || minutes < w.end),
-      )
-    )
-      charged++;
-  }
-  return charged;
-}
-
 export function estimateZoneCost(
   zone: ZoneCostInput,
   stay: StayInterval,
@@ -126,13 +73,31 @@ export function estimateZoneCost(
   // The dataset's disclaimer note appears on virtually every zone; it stays
   // visible in the UI next to the estimate rather than suppressing it.
   // Guidance-only is reserved for truly missing/unparseable fee or hours.
+  // An explicit free marker ("gebührenfrei") or a zero amount means the zone
+  // is free, regardless of hours.
   if (!zone.fee?.trim()) return { kind: "guidance", reason: "missing-fee" };
+  if (/gebührenfrei|kostenlos|\bfree\b/i.test(zone.fee))
+    return {
+      kind: "free",
+      chargedMinutes: 0,
+      totalMinutes: stay.durationMinutes,
+    };
   if (!zone.hours?.trim()) return { kind: "guidance", reason: "missing-hours" };
   const rate = parseFeeRate(zone.fee);
   if (!rate) return { kind: "guidance", reason: "unparseable-fee" };
+  if (rate.amountEur === 0)
+    return {
+      kind: "free",
+      chargedMinutes: 0,
+      totalMinutes: stay.durationMinutes,
+    };
   const windows = parseZoneHours(zone.hours);
   if (!windows) return { kind: "guidance", reason: "unparseable-hours" };
-  const charged = chargedMinutes(windows, stay.arrivalMs, stay.durationMinutes);
+  const charged = chargedMinutesInWindows(
+    windows,
+    stay.arrivalMs,
+    stay.durationMinutes,
+  );
   if (charged === 0)
     return {
       kind: "free",
@@ -151,9 +116,16 @@ export function estimateZoneCost(
   };
 }
 
+const eurFormats = new Map<string, Intl.NumberFormat>();
+
 export function formatEur(amount: number, locale: string): string {
-  return new Intl.NumberFormat(locale, {
-    style: "currency",
-    currency: "EUR",
-  }).format(amount);
+  let format = eurFormats.get(locale);
+  if (!format) {
+    format = new Intl.NumberFormat(locale, {
+      style: "currency",
+      currency: "EUR",
+    });
+    eurFormats.set(locale, format);
+  }
+  return format.format(amount);
 }

@@ -1,10 +1,9 @@
 import { type ContextResult, type ParkingZone } from "@/lib/parking-context";
+import type { StayInterval } from "@/lib/parking";
 import { useLocale } from "@/lib/i18n";
 import { formatDuration } from "@/lib/search-time";
 import { estimateZoneCost, formatEur } from "@/lib/zone-cost";
 import styles from "./address-search.module.css";
-
-type Stay = { arrivalMs: number; durationMinutes: number };
 
 // Dumb: managed-zone guidance with a per-zone stay-cost explanation.
 export function ZoneSection({
@@ -12,7 +11,7 @@ export function ZoneSection({
   stay,
 }: {
   zones: ContextResult<ParkingZone>;
-  stay?: Stay | null;
+  stay?: StayInterval | null;
 }) {
   const { t, locale } = useLocale();
   return (
@@ -69,46 +68,38 @@ export function ZoneSection({
   );
 }
 
-function ZoneCostLine({ zone, stay }: { zone: ParkingZone; stay: Stay }) {
+function ZoneCostLine({
+  zone,
+  stay,
+}: {
+  zone: ParkingZone;
+  stay: StayInterval;
+}) {
   const { t, locale } = useLocale();
   const result = estimateZoneCost(zone, stay);
-  if (result.kind === "estimate") {
-    const rate = `${formatEur(result.rateEur, locale)} / ${formatDuration(result.perMinutes, locale)}`;
-    return (
-      <div className={styles.zoneCost} aria-live="polite">
-        <span className={styles.zoneCostTitle}>{t("zones.costTitle")}</span>
-        <span>
-          {t("zones.costEstimate", {
-            total: formatEur(result.totalEur, locale),
-            charged: formatDuration(result.chargedMinutes, locale),
-            stay: formatDuration(result.totalMinutes, locale),
-            rate,
-          })}
-        </span>
-        <small>{t("zones.costSource")}</small>
-      </div>
-    );
-  }
-  if (result.kind === "free") {
-    return (
-      <div className={styles.zoneCost} aria-live="polite">
-        <span className={styles.zoneCostTitle}>{t("zones.costTitle")}</span>
-        <span>
-          {zone.hours
-            ? t("zones.costFree", { hours: zone.hours })
-            : t("zones.costGuidance", {
-                reason: t("zones.costReasonMissing"),
-              })}
-        </span>
-        <small>{t("zones.costSource")}</small>
-      </div>
-    );
-  }
-  const reason = t("zones.costReasonMissing");
+  // Seasonal rules (e.g. "Advents-Sa") parse as unparseable-hours but mean
+  // local exceptions, not missing data.
+  const reason =
+    result.kind === "guidance" &&
+    result.reason === "unparseable-hours" &&
+    /advent/i.test(zone.hours ?? "")
+      ? t("zones.costReasonLocal")
+      : t("zones.costReasonMissing");
+  const body =
+    result.kind === "estimate"
+      ? t("zones.costEstimate", {
+          total: formatEur(result.totalEur, locale),
+          charged: formatDuration(result.chargedMinutes, locale),
+          stay: formatDuration(result.totalMinutes, locale),
+          rate: `${formatEur(result.rateEur, locale)} / ${formatDuration(result.perMinutes, locale)}`,
+        })
+      : result.kind === "free"
+        ? t("zones.costFree", { hours: zone.hours ?? "" })
+        : t("zones.costGuidance", { reason });
   return (
-    <div className={styles.zoneCost} aria-live="polite">
+    <div className={styles.zoneCost}>
       <span className={styles.zoneCostTitle}>{t("zones.costTitle")}</span>
-      <span>{t("zones.costGuidance", { reason })}</span>
+      <span>{body}</span>
       <small>{t("zones.costSource")}</small>
     </div>
   );

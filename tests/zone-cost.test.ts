@@ -78,12 +78,11 @@ test("reports free when the stay falls outside charged hours", () => {
   assert.equal(result.kind, "free");
 });
 
-test("estimates the Zone 72 shape: bare hourly fee with a disclaimer note", () => {
+test("estimates the Zone 72 shape: bare hourly fee", () => {
   const result = estimateZoneCost(
     {
       hours: "Mo-Fr 9-20 Uhr / Sa 9-18 Uhr",
       fee: "3,00 Euro",
-      note: "Gebührenhöhe und Bewirtschaftungszeiten können auf lokal begrenzten Abschnitten bisweilen abweichen",
     },
     { arrivalMs: monday("10:00:00"), durationMinutes: 60 },
   );
@@ -91,6 +90,38 @@ test("estimates the Zone 72 shape: bare hourly fee with a disclaimer note", () =
   if (result.kind !== "estimate") return;
   assert.equal(result.chargedMinutes, 60);
   assert.equal(result.totalEur, 3);
+});
+
+test("reports free for an explicit zero fee or free marker", () => {
+  for (const fee of ["0 €", "0,00 Euro", "gebührenfrei"]) {
+    const result = estimateZoneCost(
+      { hours: "Mo–Sa 9–20 Uhr", fee },
+      { arrivalMs: monday("10:00:00"), durationMinutes: 60 },
+    );
+    assert.equal(result.kind, "free");
+  }
+});
+
+test("charges only the overlap when the stay straddles the window edge", () => {
+  const result = estimateZoneCost(
+    { hours: "Mo–Sa 9–20 Uhr", fee: "2 € / 30 Min" },
+    { arrivalMs: monday("19:30:00"), durationMinutes: 60 },
+  );
+  assert.equal(result.kind, "estimate");
+  if (result.kind !== "estimate") return;
+  assert.equal(result.chargedMinutes, 30);
+  assert.equal(result.totalEur, 2);
+});
+
+test("handles overnight windows without double-counting", () => {
+  const result = estimateZoneCost(
+    { hours: "Mo-Fr 20-06 Uhr", fee: "1 € / 60 Min" },
+    { arrivalMs: monday("22:00:00"), durationMinutes: 120 },
+  );
+  assert.equal(result.kind, "estimate");
+  if (result.kind !== "estimate") return;
+  assert.equal(result.chargedMinutes, 120);
+  assert.equal(result.totalEur, 2);
 });
 
 test("shows guidance without a total when data is missing or seasonal rules apply", () => {
@@ -110,7 +141,7 @@ test("shows guidance without a total when data is missing or seasonal rules appl
   );
   assert.deepEqual(
     estimateZoneCost(
-      { hours: "Mo–Sa 9–20 Uhr", fee: "gebührenfrei" },
+      { hours: "Mo–Sa 9–20 Uhr", fee: "ohne Angabe" },
       { arrivalMs: monday("10:00:00"), durationMinutes: 60 },
     ),
     { kind: "guidance", reason: "unparseable-fee" },
