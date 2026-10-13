@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import type { KeyboardEvent, SubmitEvent } from "react";
+import { useRouter } from "next/navigation";
 import type { AddressSuggestion } from "@/lib/geocoder/types";
 import type { ParkingSummary } from "@/lib/parking";
 import {
@@ -15,6 +16,7 @@ import {
   type ParkingContext,
 } from "@/lib/parking-context";
 import { useLocale } from "@/lib/i18n";
+import { buildResultsUrl } from "@/lib/results-url";
 import { useAddressSuggestions } from "./use-address-suggestions";
 
 export type SearchReady = {
@@ -29,6 +31,7 @@ export type ParkingResult = ParkingSummary & ParkingContext;
 
 export function useAddressSearch() {
   const { t } = useLocale();
+  const router = useRouter();
   const [query, setQuery] = useState("");
   const [selected, setSelected] = useState<AddressSuggestion | null>(null);
   const [radius, setRadius] = useState(500);
@@ -211,11 +214,17 @@ export function useAddressSearch() {
       arrivalRef.current?.focus();
       return;
     }
-    loadParking(selected, radius, {
-      arrivalLabel: arrival,
-      arrivalMs: parsedArrival.date.getTime(),
-      durationMinutes: parsedDuration.minutes,
-    });
+    // Results live on their own shareable page; the URL is the query.
+    router.push(
+      buildResultsUrl({
+        label: selected.label,
+        latitude: selected.latitude,
+        longitude: selected.longitude,
+        radius,
+        arrival,
+        duration: parsedDuration.minutes,
+      }),
+    );
   }
 
   let liveMessage = "";

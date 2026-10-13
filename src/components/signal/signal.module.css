@@ -660,6 +660,31 @@
   font-size: 12px;
 }
 
+/* Results page */
+.resultsTop {
+  display: flex;
+  align-items: baseline;
+  gap: 8px 20px;
+  flex-wrap: wrap;
+  padding: 30px var(--signal-gutter) 22px;
+  border-bottom: 1px solid #b9caba;
+}
+.backLink {
+  color: var(--detail-accent);
+  font-size: 13px;
+  font-weight: 800;
+  text-decoration-thickness: 1px;
+  text-underline-offset: 4px;
+  white-space: nowrap;
+}
+.resultsTitle {
+  margin: 0;
+  font-size: clamp(28px, 3.4vw, 44px);
+  line-height: 1.1;
+  letter-spacing: -0.05em;
+  overflow-wrap: anywhere;
+}
+
 /* Footer */
 .footer {
   padding: 20px var(--signal-gutter);

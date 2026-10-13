@@ -62,6 +62,8 @@ test("searches, selects an address, and shows nearby parking", async ({
   await radius.press("ArrowLeft");
   await page.getByRole("button", { name: "Check nearby streets" }).click();
 
+  await page.waitForURL(/\/results\?/);
+  await expect(page.getByRole("link", { name: "← New search" })).toBeVisible();
   const strip = page
     .locator("section")
     .filter({ hasText: "WHAT YOU CAN CHECK" });
@@ -130,6 +132,7 @@ test("shows the Bescheid report, side rail, and event carousel", async ({
   await page.getByRole("option", { name: /Alexanderplatz 1/ }).click();
   await page.getByRole("button", { name: "Check nearby streets" }).click();
 
+  await page.waitForURL(/\/results\?/);
   const strip = page
     .locator("section")
     .filter({ hasText: "WHAT YOU CAN CHECK" });

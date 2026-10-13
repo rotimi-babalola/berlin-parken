@@ -1,5 +1,4 @@
 import {
-  act,
   cleanup,
   fireEvent,
   render,
@@ -9,8 +8,26 @@ import {
 } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { SignalPage } from "@/components/signal/SignalPage";
+import { SignalResultsPage } from "@/components/signal/SignalResultsPage";
 import { LocaleProvider } from "@/lib/i18n";
+import { defaultArrivalValue } from "@/lib/search-time";
 import type { AddressSuggestion } from "@/lib/geocoder/types";
+
+const pushMock = vi.fn();
+let searchParamsValue = new URLSearchParams();
+vi.mock("next/navigation", () => ({
+  useRouter: () => ({ push: pushMock }),
+  useSearchParams: () => searchParamsValue,
+}));
+vi.mock("next/link", () => ({
+  default: ({
+    href,
+    children,
+  }: {
+    href: string;
+    children: React.ReactNode;
+  }) => <a href={href}>{children}</a>,
+}));
 
 const suggestions: AddressSuggestion[] = Array.from(
   { length: 6 },
@@ -31,6 +48,8 @@ afterEach(() => {
   cleanup();
   vi.unstubAllGlobals();
   vi.restoreAllMocks();
+  pushMock.mockClear();
+  searchParamsValue = new URLSearchParams();
   if (originalScrollIntoView) {
     Object.defineProperty(
       HTMLElement.prototype,
@@ -50,130 +69,59 @@ function openEvents() {
   fireEvent.click(screen.getByText("03 / PLANNED CHANGES"));
 }
 
-describe("SignalPage", () => {
-  async function searchAndSubmit(parkingPayload: unknown) {
-    vi.stubGlobal(
-      "fetch",
-      vi.fn((input: RequestInfo | URL) => {
-        const url = String(input);
-        if (url.startsWith("/api/geocode?")) {
-          return Promise.resolve({
-            ok: true,
-            json: async () => ({ suggestions }),
-          });
-        }
-        return Promise.resolve({ ok: true, json: async () => parkingPayload });
-      }),
-    );
+function stubGeocode() {
+  vi.stubGlobal(
+    "fetch",
+    vi.fn(async () => ({
+      ok: true,
+      json: async () => ({ suggestions }),
+    })),
+  );
+}
 
-    render(<SignalPage />);
-    const input = screen.getByRole("combobox", { name: "Destination address" });
-    fireEvent.change(input, { target: { value: "Alexanderplatz" } });
-    fireEvent.click(
-      await screen.findByRole("option", { name: /Alexanderplatz 1/ }),
-    );
+async function fillAndChooseSuggestion() {
+  render(<SignalPage />);
+  const input = screen.getByRole("combobox", { name: "Destination address" });
+  fireEvent.change(input, { target: { value: "Alexanderplatz" } });
+  fireEvent.click(
+    await screen.findByRole("option", { name: /Alexanderplatz 1/ }),
+  );
+}
+
+function validResultsParams() {
+  return new URLSearchParams({
+    label: "Alexanderplatz 1",
+    lat: "52.521",
+    lon: "13.413",
+    radius: "500",
+    arrival: defaultArrivalValue(Date.now() + 60 * 60 * 1000),
+    duration: "60",
+  });
+}
+
+describe("SignalPage", () => {
+  it("navigates to the results page with the search as URL params", async () => {
+    stubGeocode();
+    await fillAndChooseSuggestion();
+    fireEvent.change(screen.getByLabelText("Intended stay"), {
+      target: { value: "120" },
+    });
+    fireEvent.change(screen.getByRole("slider"), { target: { value: 700 } });
     fireEvent.click(
       screen.getByRole("button", { name: "Check nearby streets" }),
     );
-  }
 
-  it("renders the supply estimate with a level bar and ranked streets", async () => {
-    await searchAndSubmit({
-      status: "available",
-      mappedSpaces: 850,
-      usableSpaces: 600,
-      conditionalSpaces: 150,
-      restrictedSpaces: 80,
-      unknownSpaces: 20,
-      featureCount: 12,
-      streets: [
-        {
-          name: "Torstraße",
-          mappedSpaces: 420,
-          features: 5,
-          nearestMeters: 120,
-        },
-        {
-          name: "Linienstraße",
-          mappedSpaces: 310,
-          features: 4,
-          nearestMeters: 200,
-        },
-        {
-          name: "Gormannstraße",
-          mappedSpaces: 190,
-          features: 3,
-          nearestMeters: 340,
-        },
-      ],
-    });
-
-    await screen.findByText("WHAT YOU CAN CHECK");
-    openStreets();
-    const details = screen
-      .getByText("01 / STREET INVENTORY")
-      .closest("details") as HTMLElement;
-    expect(within(details).getByText("Moderate", { exact: true })).toBeTruthy();
+    await waitFor(() => expect(pushMock).toHaveBeenCalledTimes(1));
+    const url = new URL(pushMock.mock.calls[0][0], "http://localhost");
+    expect(url.pathname).toBe("/results");
+    expect(url.searchParams.get("label")).toBe("Alexanderplatz 1");
+    expect(url.searchParams.get("lat")).toBe("52.521");
+    expect(url.searchParams.get("lon")).toBe("13.413");
+    expect(url.searchParams.get("radius")).toBe("700");
+    expect(url.searchParams.get("duration")).toBe("120");
     expect(
-      within(details).getByRole("img", {
-        name: "Supply estimate Moderate, level 2 of 3",
-      }),
-    ).toBeTruthy();
-    for (const street of ["Torstraße", "Linienstraße", "Gormannstraße"]) {
-      expect(within(details).getByText(street)).toBeTruthy();
-    }
-    expect(
-      within(within(details).getByRole("list")).getAllByRole("listitem"),
-    ).toHaveLength(3);
-    expect(within(details).getByText(/120 m away/)).toBeTruthy();
-  });
-
-  it("pages through more than five events with the carousel controls", async () => {
-    await searchAndSubmit({
-      status: "available",
-      mappedSpaces: 42,
-      usableSpaces: 30,
-      conditionalSpaces: 8,
-      restrictedSpaces: 4,
-      unknownSpaces: 0,
-      featureCount: 3,
-      streets: [],
-      events: {
-        source: { status: "available", fetchedAt: new Date().toISOString() },
-        items: Array.from({ length: 6 }, (_, index) => ({
-          id: `event-${index + 1}`,
-          type: `Event ${index + 1}`,
-          street: "Torstraße",
-          distanceMeters: 50 + index * 10,
-        })),
-      },
-    });
-
-    await screen.findByText("WHAT YOU CAN CHECK");
-    openEvents();
-    const details = screen
-      .getByText("03 / PLANNED CHANGES")
-      .closest("details") as HTMLElement;
-    await within(details).findByText("1–5 of 6");
-    expect(within(details).queryByText("Event 6")).toBeNull();
-    expect(
-      within(details).getByRole("button", { name: "Show previous events" }),
-    ).toHaveProperty("disabled", true);
-
-    fireEvent.click(
-      within(details).getByRole("button", { name: "Show next events" }),
-    );
-    expect(await within(details).findByText("6–6 of 6")).toBeTruthy();
-    expect(within(details).getByText("Event 6")).toBeTruthy();
-    expect(
-      within(details).getByRole("button", { name: "Show next events" }),
-    ).toHaveProperty("disabled", true);
-
-    fireEvent.click(
-      within(details).getByRole("button", { name: "Show previous events" }),
-    );
-    expect(await within(details).findByText("1–5 of 6")).toBeTruthy();
-    expect(within(details).queryByText("Event 6")).toBeNull();
+      Number.isFinite(Date.parse(url.searchParams.get("arrival") ?? "")),
+    ).toBe(true);
   });
 
   it("retries the same query and returns focus to the address field", async () => {
@@ -199,68 +147,8 @@ describe("SignalPage", () => {
     expect(requestedUrls[0]).toBe(requestedUrls[1]);
   });
 
-  it("retries a failed parking request with the selected destination and radius", async () => {
-    const parkingUrls: string[] = [];
-    vi.stubGlobal(
-      "fetch",
-      vi.fn(async (input: RequestInfo | URL) => {
-        const url = String(input);
-        if (url.startsWith("/api/geocode?"))
-          return {
-            ok: true,
-            json: async () => ({ suggestions: [suggestions[0]] }),
-          };
-        parkingUrls.push(url);
-        return parkingUrls.length === 1
-          ? { ok: false, json: async () => ({}) }
-          : {
-              ok: true,
-              json: async () => ({
-                status: "empty",
-                mappedSpaces: 0,
-                usableSpaces: 0,
-                conditionalSpaces: 0,
-                restrictedSpaces: 0,
-                unknownSpaces: 0,
-                featureCount: 0,
-                streets: [],
-              }),
-            };
-      }),
-    );
-
-    render(<SignalPage />);
-    fireEvent.change(
-      screen.getByRole("combobox", { name: "Destination address" }),
-      {
-        target: { value: "Alexanderplatz" },
-      },
-    );
-    fireEvent.click(
-      await screen.findByRole("option", { name: /Alexanderplatz 1/ }),
-    );
-    fireEvent.click(
-      screen.getByRole("button", { name: "Check nearby streets" }),
-    );
-    fireEvent.click(
-      await screen.findByRole("button", { name: "Retry parking search" }),
-    );
-
-    await screen.findByText(
-      "No mapped parking areas were returned for this radius.",
-    );
-    expect(parkingUrls).toHaveLength(2);
-    expect(parkingUrls[0]).toBe(parkingUrls[1]);
-  });
-
   it("does not select an arbitrary result when Enter is pressed without an active option", async () => {
-    vi.stubGlobal(
-      "fetch",
-      vi.fn(async () => ({
-        ok: true,
-        json: async () => ({ suggestions }),
-      })),
-    );
+    stubGeocode();
 
     render(<SignalPage />);
     const input = screen.getByRole("combobox", { name: "Destination address" });
@@ -272,21 +160,11 @@ describe("SignalPage", () => {
     expect(
       within(screen.getByRole("listbox")).getAllByRole("option"),
     ).toHaveLength(6);
-    expect(
-      screen.queryByText(
-        "Choose a destination above to see a parking overview here.",
-      ),
-    ).toBeTruthy();
+    expect(pushMock).not.toHaveBeenCalled();
   });
 
   it("selects the keyboard-highlighted result and scrolls it into view", async () => {
-    vi.stubGlobal(
-      "fetch",
-      vi.fn(async () => ({
-        ok: true,
-        json: async () => ({ suggestions }),
-      })),
-    );
+    stubGeocode();
     const scrollIntoView = vi.fn();
     HTMLElement.prototype.scrollIntoView = scrollIntoView;
 
@@ -317,6 +195,7 @@ describe("SignalPage", () => {
     expect(
       screen.getByText("Select a Berlin address suggestion before continuing."),
     ).toBeTruthy();
+    expect(pushMock).not.toHaveBeenCalled();
   });
 
   it("switches the UI to German and persists the choice", async () => {
@@ -340,160 +219,7 @@ describe("SignalPage", () => {
     expect(window.localStorage.getItem("berlin-parken-locale")).toBe("de");
   });
 
-  it("does not replace a newer search result with an older response", async () => {
-    type MockResponse = { ok: boolean; json: () => Promise<unknown> };
-    const newerSuggestion = { ...suggestions[1], label: "Potsdamer Platz 1" };
-    const parkingResponses: Array<(response: MockResponse) => void> = [];
-    vi.stubGlobal(
-      "fetch",
-      vi.fn((input: RequestInfo | URL) => {
-        const url = String(input);
-        if (url.startsWith("/api/geocode?")) {
-          const query = new URL(url, "http://localhost").searchParams.get("q");
-          return Promise.resolve({
-            ok: true,
-            json: async () => ({
-              suggestions: [
-                query === "Alexanderplatz" ? suggestions[0] : newerSuggestion,
-              ],
-            }),
-          });
-        }
-        return new Promise<MockResponse>((resolve) =>
-          parkingResponses.push(resolve),
-        );
-      }),
-    );
-
-    render(<SignalPage />);
-    const input = screen.getByRole("combobox", { name: "Destination address" });
-    fireEvent.change(input, { target: { value: "Alexanderplatz" } });
-    fireEvent.click(
-      await screen.findByRole("option", { name: /Alexanderplatz 1/ }),
-    );
-    fireEvent.click(
-      screen.getByRole("button", { name: "Check nearby streets" }),
-    );
-    await waitFor(() => expect(parkingResponses).toHaveLength(1));
-
-    fireEvent.change(input, { target: { value: "Potsdamer Platz" } });
-    fireEvent.click(
-      await screen.findByRole("option", { name: /Potsdamer Platz 1/ }),
-    );
-    fireEvent.click(
-      screen.getByRole("button", { name: "Check nearby streets" }),
-    );
-    await waitFor(() => expect(parkingResponses).toHaveLength(2));
-
-    await act(async () => {
-      parkingResponses[1]({
-        ok: true,
-        json: async () => ({
-          status: "available",
-          mappedSpaces: 22,
-          usableSpaces: 22,
-          conditionalSpaces: 0,
-          restrictedSpaces: 0,
-          unknownSpaces: 0,
-          featureCount: 1,
-          streets: [],
-        }),
-      });
-    });
-    expect(screen.getByText("22", { selector: "strong" })).toBeTruthy();
-
-    await act(async () => {
-      parkingResponses[0]({
-        ok: true,
-        json: async () => ({
-          status: "available",
-          mappedSpaces: 11,
-          usableSpaces: 11,
-          conditionalSpaces: 0,
-          restrictedSpaces: 0,
-          unknownSpaces: 0,
-          featureCount: 1,
-          streets: [],
-        }),
-      });
-    });
-
-    expect(screen.getAllByText(/Potsdamer Platz 1/)).toHaveLength(3);
-    expect(screen.getByText("22", { selector: "strong" })).toBeTruthy();
-    expect(screen.queryByText("11", { selector: "strong" })).toBeNull();
-  });
-
-  it("shows the chosen arrival and stay in the results and keeps them while refining", async () => {
-    const parkingUrls: string[] = [];
-    const availablePayload = {
-      status: "available",
-      mappedSpaces: 42,
-      usableSpaces: 30,
-      conditionalSpaces: 8,
-      restrictedSpaces: 4,
-      unknownSpaces: 0,
-      featureCount: 3,
-      streets: [{ name: "Alexanderstraße", mappedSpaces: 42, features: 3 }],
-    };
-    vi.stubGlobal(
-      "fetch",
-      vi.fn(async (input: RequestInfo | URL) => {
-        const url = String(input);
-        if (url.startsWith("/api/geocode?"))
-          return {
-            ok: true,
-            json: async () => ({ suggestions: [suggestions[0]] }),
-          };
-        parkingUrls.push(url);
-        return { ok: true, json: async () => availablePayload };
-      }),
-    );
-
-    render(<SignalPage />);
-    fireEvent.change(
-      screen.getByRole("combobox", { name: "Destination address" }),
-      { target: { value: "Alexanderplatz" } },
-    );
-    fireEvent.click(
-      await screen.findByRole("option", { name: /Alexanderplatz 1/ }),
-    );
-    const arrival = screen.getByLabelText("Arrival time") as HTMLInputElement;
-    expect(arrival.value).not.toBe("");
-    fireEvent.change(screen.getByLabelText("Intended stay"), {
-      target: { value: "120" },
-    });
-    fireEvent.click(
-      screen.getByRole("button", { name: "Check nearby streets" }),
-    );
-
-    await screen.findByText("WHAT YOU CAN CHECK");
-    expect(screen.getAllByText(/Arrival .*·.*stay/)).toHaveLength(2);
-
-    // Refining the radius keeps the chosen time inputs, and the next
-    // search reuses them with the new radius.
-    fireEvent.change(screen.getByRole("slider"), { target: { value: 700 } });
-    expect(
-      (screen.getByLabelText("Arrival time") as HTMLInputElement).value,
-    ).toBe(arrival.value);
-    expect(
-      (screen.getByLabelText("Intended stay") as HTMLSelectElement).value,
-    ).toBe("120");
-    fireEvent.click(
-      screen.getByRole("button", { name: "Check nearby streets" }),
-    );
-    await screen.findByText("WHAT YOU CAN CHECK");
-
-    expect(parkingUrls).toHaveLength(2);
-    const first = new URL(parkingUrls[0], "http://localhost").searchParams;
-    const second = new URL(parkingUrls[1], "http://localhost").searchParams;
-    expect(first.get("duration")).toBe("120");
-    expect(second.get("duration")).toBe("120");
-    expect(first.get("arrival")).toBe(second.get("arrival"));
-    expect(second.get("radius")).toBe("700");
-    expect(Number.isFinite(Date.parse(first.get("arrival") ?? ""))).toBe(true);
-  });
-
-  it("blocks the search when the arrival time is in the past", async () => {
+  it("blocks navigation when the arrival time is in the past", async () => {
     let parkingRequests = 0;
     vi.stubGlobal(
       "fetch",
@@ -531,10 +257,173 @@ describe("SignalPage", () => {
     expect(arrival.getAttribute("aria-invalid")).toBe("true");
     expect(document.activeElement).toBe(arrival);
     expect(parkingRequests).toBe(0);
+    expect(pushMock).not.toHaveBeenCalled();
+  });
+});
+
+describe("SignalResultsPage", () => {
+  function stubParking(payload: unknown) {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () => ({ ok: true, json: async () => payload })),
+    );
+  }
+
+  it("renders the supply estimate with a level bar and ranked streets", async () => {
+    searchParamsValue = validResultsParams();
+    stubParking({
+      status: "available",
+      mappedSpaces: 850,
+      usableSpaces: 600,
+      conditionalSpaces: 150,
+      restrictedSpaces: 80,
+      unknownSpaces: 20,
+      featureCount: 12,
+      streets: [
+        {
+          name: "Torstraße",
+          mappedSpaces: 420,
+          features: 5,
+          nearestMeters: 120,
+        },
+        {
+          name: "Linienstraße",
+          mappedSpaces: 310,
+          features: 4,
+          nearestMeters: 200,
+        },
+        {
+          name: "Gormannstraße",
+          mappedSpaces: 190,
+          features: 3,
+          nearestMeters: 340,
+        },
+      ],
+    });
+
+    render(<SignalResultsPage />);
+
+    await screen.findByText("WHAT YOU CAN CHECK");
     expect(
-      screen.queryByText(
-        "Choose a destination above to see a parking overview here.",
-      ),
+      screen.getByRole("heading", { name: "Alexanderplatz 1" }),
     ).toBeTruthy();
+    openStreets();
+    const details = screen
+      .getByText("01 / STREET INVENTORY")
+      .closest("details") as HTMLElement;
+    expect(within(details).getByText("Moderate", { exact: true })).toBeTruthy();
+    expect(
+      within(details).getByRole("img", {
+        name: "Supply estimate Moderate, level 2 of 3",
+      }),
+    ).toBeTruthy();
+    for (const street of ["Torstraße", "Linienstraße", "Gormannstraße"]) {
+      expect(within(details).getByText(street)).toBeTruthy();
+    }
+    expect(
+      within(within(details).getByRole("list")).getAllByRole("listitem"),
+    ).toHaveLength(3);
+    expect(within(details).getByText(/120 m away/)).toBeTruthy();
+  });
+
+  it("pages through more than five events with the carousel controls", async () => {
+    searchParamsValue = validResultsParams();
+    stubParking({
+      status: "available",
+      mappedSpaces: 42,
+      usableSpaces: 30,
+      conditionalSpaces: 8,
+      restrictedSpaces: 4,
+      unknownSpaces: 0,
+      featureCount: 3,
+      streets: [],
+      events: {
+        source: { status: "available", fetchedAt: new Date().toISOString() },
+        items: Array.from({ length: 6 }, (_, index) => ({
+          id: `event-${index + 1}`,
+          type: `Event ${index + 1}`,
+          street: "Torstraße",
+          distanceMeters: 50 + index * 10,
+        })),
+      },
+    });
+
+    render(<SignalResultsPage />);
+
+    await screen.findByText("WHAT YOU CAN CHECK");
+    openEvents();
+    const details = screen
+      .getByText("03 / PLANNED CHANGES")
+      .closest("details") as HTMLElement;
+    await within(details).findByText("1–5 of 6");
+    expect(within(details).queryByText("Event 6")).toBeNull();
+    expect(
+      within(details).getByRole("button", { name: "Show previous events" }),
+    ).toHaveProperty("disabled", true);
+
+    fireEvent.click(
+      within(details).getByRole("button", { name: "Show next events" }),
+    );
+    expect(await within(details).findByText("6–6 of 6")).toBeTruthy();
+    expect(within(details).getByText("Event 6")).toBeTruthy();
+    expect(
+      within(details).getByRole("button", { name: "Show next events" }),
+    ).toHaveProperty("disabled", true);
+
+    fireEvent.click(
+      within(details).getByRole("button", { name: "Show previous events" }),
+    );
+    expect(await within(details).findByText("1–5 of 6")).toBeTruthy();
+    expect(within(details).queryByText("Event 6")).toBeNull();
+  });
+
+  it("retries a failed parking request from the results page", async () => {
+    searchParamsValue = validResultsParams();
+    const parkingUrls: string[] = [];
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async (input: RequestInfo | URL) => {
+        parkingUrls.push(String(input));
+        return parkingUrls.length === 1
+          ? { ok: false, json: async () => ({}) }
+          : {
+              ok: true,
+              json: async () => ({
+                status: "empty",
+                mappedSpaces: 0,
+                usableSpaces: 0,
+                conditionalSpaces: 0,
+                restrictedSpaces: 0,
+                unknownSpaces: 0,
+                featureCount: 0,
+                streets: [],
+              }),
+            };
+      }),
+    );
+
+    render(<SignalResultsPage />);
+    fireEvent.click(
+      await screen.findByRole("button", { name: "Retry parking search" }),
+    );
+
+    await screen.findByText(
+      "No mapped parking areas were returned for this radius.",
+    );
+    expect(parkingUrls).toHaveLength(2);
+    expect(parkingUrls[0]).toBe(parkingUrls[1]);
+  });
+
+  it("offers a way back when the results link is incomplete", async () => {
+    searchParamsValue = new URLSearchParams();
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () => ({ ok: true, json: async () => ({}) })),
+    );
+
+    render(<SignalResultsPage />);
+
+    await screen.findByText(/incomplete/);
+    expect(screen.getByRole("link", { name: "← New search" })).toBeTruthy();
   });
 });

@@ -4,7 +4,11 @@ import { Brand } from "./Brand";
 import styles from "./signal.module.css";
 
 // Dumb: top bar. Copy comes from i18n; language state lives in LocaleProvider.
-export function SignalHeader() {
+export function SignalHeader({
+  startHref = "#search",
+}: {
+  startHref?: string;
+}) {
   const { t } = useLocale();
   return (
     <header className={styles.header}>
@@ -12,7 +16,7 @@ export function SignalHeader() {
       <span className={styles.headerTag}>{t("signal.tagline")}</span>
       <span className={styles.headerRight}>
         <LanguageSwitcher />
-        <a className={styles.headerLink} href="#search">
+        <a className={styles.headerLink} href={startHref}>
           {t("signal.start")}
         </a>
       </span>
