@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { getNearbyParking, type StayInterval } from "@/lib/parking";
 import { getParkingContext } from "@/lib/parking-context";
+import { isInBerlin } from "@/lib/results-url";
 import { parseArrivalInstant, parseDuration } from "@/lib/search-time";
 
 export const runtime = "nodejs";
@@ -11,12 +12,7 @@ export async function GET(request: Request) {
   const latitude = Number(params.get("latitude"));
   const radiusMeters = Number(params.get("radius"));
   if (
-    !Number.isFinite(longitude) ||
-    longitude < 13.0 ||
-    longitude > 13.8 ||
-    !Number.isFinite(latitude) ||
-    latitude < 52.3 ||
-    latitude > 52.7 ||
+    !isInBerlin(latitude, longitude) ||
     !Number.isInteger(radiusMeters) ||
     radiusMeters < 100 ||
     radiusMeters > 1000

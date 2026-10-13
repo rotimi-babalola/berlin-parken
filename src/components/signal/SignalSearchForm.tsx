@@ -20,7 +20,6 @@ type Props = {
   suggestions: AddressSuggestion[];
   recentsHeader: string | null;
   recentsEmpty: boolean;
-  dropdownOpen: boolean;
   suggestionState: "idle" | "loading" | "empty" | "error" | "ready";
   submitError: boolean;
   liveMessage: string;
@@ -54,7 +53,6 @@ export function SignalSearchForm({
   suggestions,
   recentsHeader,
   recentsEmpty,
-  dropdownOpen,
   suggestionState,
   submitError,
   liveMessage,
@@ -75,6 +73,9 @@ export function SignalSearchForm({
   const inputId = useId();
   const listId = useId();
   const { t, locale } = useLocale();
+  // The dropdown shows live suggestions, recent searches, or the empty-history
+  // note — one expression gates both the list and aria-expanded.
+  const listOpen = suggestions.length > 0 || recentsEmpty;
 
   return (
     // noValidate: arrival/range hints stay as picker aids; this form's own
@@ -89,12 +90,12 @@ export function SignalSearchForm({
             type="search"
             role="combobox"
             autoComplete="off"
-            maxLength={120}
+            maxLength={200}
             value={query}
             placeholder={t("search.placeholder")}
             aria-autocomplete="list"
             aria-controls={listId}
-            aria-expanded={dropdownOpen}
+            aria-expanded={listOpen}
             aria-activedescendant={
               activeIndex >= 0 && suggestions.length
                 ? `${listId}-option-${activeIndex}`
@@ -111,7 +112,7 @@ export function SignalSearchForm({
           {suggestionState === "loading" && (
             <span className={styles.spinner} aria-hidden="true" />
           )}
-          {(suggestions.length > 0 || recentsEmpty) && (
+          {listOpen && (
             <ul
               className={styles.suggestions}
               id={listId}

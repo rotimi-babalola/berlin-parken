@@ -14,6 +14,19 @@ export type ParsedResultsQuery = ResultsQuery & { arrivalMs: number };
 
 const BERLIN_BBOX = { minLon: 13.0, maxLon: 13.8, minLat: 52.3, maxLat: 52.7 };
 
+// Single Berlin bounds check shared by the results URL validator and
+// /api/parking, so the two can't drift apart.
+export function isInBerlin(latitude: number, longitude: number): boolean {
+  return (
+    Number.isFinite(latitude) &&
+    latitude >= BERLIN_BBOX.minLat &&
+    latitude <= BERLIN_BBOX.maxLat &&
+    Number.isFinite(longitude) &&
+    longitude >= BERLIN_BBOX.minLon &&
+    longitude <= BERLIN_BBOX.maxLon
+  );
+}
+
 export function buildResultsUrl(query: ResultsQuery): string {
   const params = new URLSearchParams({
     label: query.label,
@@ -27,7 +40,7 @@ export function buildResultsUrl(query: ResultsQuery): string {
 }
 
 // Single validator for the shareable results URL, so refresh and shared
-// links resolve to the same search. Mirrors the /api/parking bounds.
+// links resolve to the same search. Radius bounds mirror /api/parking.
 export function parseResultsParams(
   params: URLSearchParams,
 ): { ok: true; value: ParsedResultsQuery } | { ok: false } {
@@ -39,12 +52,7 @@ export function parseResultsParams(
   const durationParam = params.get("duration") ?? "";
   if (!label || label.length > 200) return { ok: false };
   if (
-    !Number.isFinite(latitude) ||
-    latitude < BERLIN_BBOX.minLat ||
-    latitude > BERLIN_BBOX.maxLat ||
-    !Number.isFinite(longitude) ||
-    longitude < BERLIN_BBOX.minLon ||
-    longitude > BERLIN_BBOX.maxLon ||
+    !isInBerlin(latitude, longitude) ||
     !Number.isInteger(radius) ||
     radius < 100 ||
     radius > 1000

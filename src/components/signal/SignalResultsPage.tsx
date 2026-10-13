@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { useEffect, useState } from "react";
-import type { ParkingResult, SearchReady } from "@/hooks/use-address-search";
+import type { SearchReady } from "@/hooks/use-address-search";
 import { useLocale } from "@/lib/i18n";
 import { ensureParkingContext } from "@/lib/parking-context";
 import type { ParkingSummary } from "@/lib/parking";
@@ -15,6 +15,8 @@ import { SignalHeader } from "./SignalHeader";
 import { SignalResultStrip } from "./SignalResultStrip";
 import { SignalResultsSearch } from "./SignalResultsSearch";
 import styles from "./signal.module.css";
+
+type ParkingResult = ParkingSummary & ParkingContext;
 
 // Results page: URL is the query (shareable, refresh-safe). Fetches
 // /api/parking from the validated params and reuses the same dumb
@@ -58,9 +60,7 @@ export function SignalResultsPage() {
             reqKey,
             parking: {
               ...payload,
-              ...ensureParkingContext(
-                payload as unknown as Record<string, unknown>,
-              ),
+              ...ensureParkingContext(payload),
             },
           });
       })
@@ -102,8 +102,8 @@ export function SignalResultsPage() {
       cancelled = true;
       controller.abort();
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- re-fetch on URL change or manual retry; `parsed`/`reqKey` derive from the same params.
-  }, [reqKey, attempt]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- re-fetch on URL change or manual retry; `reqKey` already covers both, and `parsed`/`t` derive from the same params.
+  }, [reqKey]);
 
   if (!parsed.ok) {
     return (
@@ -140,9 +140,7 @@ export function SignalResultsPage() {
     arrivalMs: parsed.value.arrivalMs,
     durationMinutes: parsed.value.duration,
   };
-  const { zones, events } = ensureParkingContext(
-    (parking ?? {}) as Record<string, unknown>,
-  );
+  const { zones, events } = ensureParkingContext(parking);
   const detailsReady =
     !loading && parking && parking.status !== "unavailable"
       ? { search, parking }

@@ -32,7 +32,6 @@ export function SignalPage() {
               suggestions={search.dropdownItems}
               recentsHeader={search.recentsHeader}
               recentsEmpty={search.recentsEmpty}
-              dropdownOpen={search.dropdownOpen}
               suggestionState={search.suggestionState}
               submitError={search.submitError}
               liveMessage={search.liveMessage}

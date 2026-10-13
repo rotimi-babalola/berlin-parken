@@ -56,6 +56,28 @@ test("records searches newest-first, dedupes, and caps at five", () => {
   assert.ok(!recent.some((item) => item.label === "Platz 1"));
 });
 
+test("keeps distinct places that share a label", () => {
+  recordRecentSearch({
+    id: "street:1",
+    label: "Hauptstrasse 1",
+    detail: "Kreuzberg",
+    latitude: 52.499,
+    longitude: 13.401,
+  });
+  recordRecentSearch({
+    id: "street:2",
+    label: "Hauptstrasse 1",
+    detail: "Schoeneberg",
+    latitude: 52.488,
+    longitude: 13.352,
+  });
+
+  const recent = loadRecentSearches();
+  assert.equal(recent.length, 2);
+  assert.equal(recent[0].detail, "Schoeneberg");
+  assert.equal(recent[1].detail, "Kreuzberg");
+});
+
 test("ignores corrupt or shapeless stored entries", () => {
   globalThis.localStorage.setItem("berlin-parken-recent-searches", "nope{[");
   assert.deepEqual(loadRecentSearches(), []);

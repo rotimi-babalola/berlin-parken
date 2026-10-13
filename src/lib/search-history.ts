@@ -12,6 +12,14 @@ function storage(): Storage | null {
   }
 }
 
+// Stable identity for dedupe: the geocoder id when there is one, else the
+// label with coordinates, so two distinct places sharing a label both survive.
+function recentKey(suggestion: AddressSuggestion): string {
+  if (suggestion.id && !suggestion.id.startsWith("recent:"))
+    return suggestion.id;
+  return `${suggestion.label}|${suggestion.latitude}|${suggestion.longitude}`;
+}
+
 // Past destination searches, newest first. localStorage only (v1 has no
 // DB); every access is guarded for SSR prerendering and private mode.
 export function loadRecentSearches(): AddressSuggestion[] {
@@ -50,7 +58,9 @@ export function recordRecentSearch(suggestion: AddressSuggestion): void {
   try {
     const next = [
       suggestion,
-      ...loadRecentSearches().filter((item) => item.label !== suggestion.label),
+      ...loadRecentSearches().filter(
+        (item) => recentKey(item) !== recentKey(suggestion),
+      ),
     ].slice(0, MAX_RECENT);
     store.setItem(STORAGE_KEY, JSON.stringify(next));
   } catch {
