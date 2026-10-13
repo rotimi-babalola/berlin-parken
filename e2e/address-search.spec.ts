@@ -63,7 +63,15 @@ test("searches, selects an address, and shows nearby parking", async ({
   await page.getByRole("button", { name: "Check nearby streets" }).click();
 
   await page.waitForURL(/\/results\?/);
-  await expect(page.getByRole("link", { name: "← New search" })).toBeVisible();
+  await expect(page.getByRole("link", { name: "← Home" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "New search" })).toBeVisible();
+  await page.setViewportSize({ width: 375, height: 812 });
+  await expect(
+    page.getByRole("button", { name: "Check nearby streets" }),
+  ).toBeVisible();
+  expect(
+    await page.evaluate(() => document.documentElement.scrollWidth),
+  ).toBeLessThanOrEqual(375);
   const strip = page
     .locator("section")
     .filter({ hasText: "WHAT YOU CAN CHECK" });
@@ -76,6 +84,18 @@ test("searches, selects an address, and shows nearby parking", async ({
     "30",
   );
   expect(requestedRadius).toBe("700");
+
+  await expect(
+    page.getByRole("combobox", { name: "Destination address" }),
+  ).toHaveValue("Alexanderplatz 1");
+  const editRadius = page.getByRole("slider");
+  await editRadius.focus();
+  await editRadius.press("End");
+  await page.getByRole("button", { name: "Check nearby streets" }).click();
+  await page.waitForURL(/radius=1000/);
+  await expect(
+    page.getByRole("heading", { name: "Alexanderplatz 1" }),
+  ).toBeVisible();
   expect(requestedDuration).toBe("120");
   expect(Number.isFinite(Date.parse(requestedArrival ?? ""))).toBe(true);
 });

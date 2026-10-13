@@ -16,7 +16,7 @@ import {
   type ParkingContext,
 } from "@/lib/parking-context";
 import { useLocale } from "@/lib/i18n";
-import { buildResultsUrl } from "@/lib/results-url";
+import { buildResultsUrl, type ResultsQuery } from "@/lib/results-url";
 import { useAddressSuggestions } from "./use-address-suggestions";
 
 export type SearchReady = {
@@ -29,13 +29,25 @@ export type SearchReady = {
 
 export type ParkingResult = ParkingSummary & ParkingContext;
 
-export function useAddressSearch() {
+export function useAddressSearch(initial?: ResultsQuery) {
   const { t } = useLocale();
   const router = useRouter();
-  const [query, setQuery] = useState("");
-  const [selected, setSelected] = useState<AddressSuggestion | null>(null);
-  const [radius, setRadius] = useState(500);
-  const [arrival, setArrival] = useState(() => defaultArrivalValue());
+  const [query, setQuery] = useState(initial?.label ?? "");
+  const [selected, setSelected] = useState<AddressSuggestion | null>(
+    initial
+      ? {
+          id: "result",
+          label: initial.label,
+          detail: "",
+          latitude: initial.latitude,
+          longitude: initial.longitude,
+        }
+      : null,
+  );
+  const [radius, setRadius] = useState(initial?.radius ?? 500);
+  const [arrival, setArrival] = useState(
+    () => initial?.arrival ?? defaultArrivalValue(),
+  );
   // Picker hints only; live validation in handleSubmit uses Date.now().
   // Frozen at mount so min/max don't churn every render for long-open tabs.
   const [timeBounds] = useState(() => ({
@@ -43,7 +55,7 @@ export function useAddressSearch() {
     max: defaultArrivalValue(Date.now() + 14 * 24 * 60 * 60 * 1000),
   }));
   const [durationMinutes, setDurationMinutes] = useState(
-    DEFAULT_DURATION_MINUTES,
+    initial?.duration ?? DEFAULT_DURATION_MINUTES,
   );
   const [timeError, setTimeError] = useState(false);
   const [activeIndex, setActiveIndex] = useState(-1);

@@ -133,22 +133,24 @@ export function SignalSearchForm({
           <span aria-hidden="true">↗</span>
         </button>
       </div>
-      <div className={styles.radiusLine}>
-        <label htmlFor={`${inputId}-radius`}>{t("search.radiusLabel")}</label>
-        <output htmlFor={`${inputId}-radius`} aria-live="off">
-          {radius < 1000 ? `${radius} m` : "1 km"}
-        </output>
+      <div className={styles.radiusGroup}>
+        <div className={styles.radiusLine}>
+          <label htmlFor={`${inputId}-radius`}>{t("search.radiusLabel")}</label>
+          <output htmlFor={`${inputId}-radius`} aria-live="off">
+            {radius < 1000 ? `${radius} m` : "1 km"}
+          </output>
+        </div>
+        <input
+          className={styles.radiusInput}
+          id={`${inputId}-radius`}
+          type="range"
+          min="100"
+          max="1000"
+          step="100"
+          value={radius}
+          onChange={(event) => onRadiusChange(Number(event.target.value))}
+        />
       </div>
-      <input
-        className={styles.radiusInput}
-        id={`${inputId}-radius`}
-        type="range"
-        min="100"
-        max="1000"
-        step="100"
-        value={radius}
-        onChange={(event) => onRadiusChange(Number(event.target.value))}
-      />
       <div className={styles.timeRow}>
         <div className={styles.timeField}>
           <label htmlFor={`${inputId}-arrival`}>

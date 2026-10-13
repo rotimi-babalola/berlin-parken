@@ -424,6 +424,47 @@ describe("SignalResultsPage", () => {
     render(<SignalResultsPage />);
 
     await screen.findByText(/incomplete/);
-    expect(screen.getByRole("link", { name: "← New search" })).toBeTruthy();
+    expect(screen.getByRole("link", { name: "← Home" })).toBeTruthy();
+    expect(
+      screen.getByRole("combobox", { name: "Destination address" }),
+    ).toBeTruthy();
+  });
+
+  it("prefills the edit form from the URL and navigates on resubmit", async () => {
+    searchParamsValue = validResultsParams();
+    stubParking({
+      status: "empty",
+      mappedSpaces: 0,
+      usableSpaces: 0,
+      conditionalSpaces: 0,
+      restrictedSpaces: 0,
+      unknownSpaces: 0,
+      featureCount: 0,
+      streets: [],
+    });
+
+    render(<SignalResultsPage />);
+    await screen.findByText(/No mapped parking areas were returned/);
+
+    const address = screen.getByRole("combobox", {
+      name: "Destination address",
+    }) as HTMLInputElement;
+    expect(address.value).toBe("Alexanderplatz 1");
+    expect(
+      (screen.getByLabelText("Intended stay") as HTMLSelectElement).value,
+    ).toBe("60");
+
+    fireEvent.change(screen.getByRole("slider"), { target: { value: 800 } });
+    fireEvent.click(
+      screen.getByRole("button", { name: "Check nearby streets" }),
+    );
+
+    await waitFor(() => expect(pushMock).toHaveBeenCalledTimes(1));
+    const url = new URL(pushMock.mock.calls[0][0], "http://localhost");
+    expect(url.pathname).toBe("/results");
+    expect(url.searchParams.get("label")).toBe("Alexanderplatz 1");
+    expect(url.searchParams.get("radius")).toBe("800");
+    expect(url.searchParams.get("lat")).toBe("52.521");
+    expect(url.searchParams.get("duration")).toBe("60");
   });
 });

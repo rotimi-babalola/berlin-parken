@@ -13,6 +13,7 @@ import { SignalDetails } from "./SignalDetails";
 import { SignalFooter } from "./SignalFooter";
 import { SignalHeader } from "./SignalHeader";
 import { SignalResultStrip } from "./SignalResultStrip";
+import { SignalResultsSearch } from "./SignalResultsSearch";
 import styles from "./signal.module.css";
 
 // Results page: URL is the query (shareable, refresh-safe). Fetches
@@ -114,6 +115,7 @@ export function SignalResultsPage() {
               {t("results.back")}
             </Link>
           </div>
+          <SignalResultsSearch key={rawParams.toString()} />
           <section className={styles.results} aria-live="polite">
             <p className={styles.emptyResult} role="alert">
               {t("results.invalid")}
@@ -156,6 +158,10 @@ export function SignalResultsPage() {
           </Link>
           <h1 className={styles.resultsTitle}>{parsed.value.label}</h1>
         </div>
+        <SignalResultsSearch
+          key={rawParams.toString()}
+          initial={parsed.value}
+        />
         <SignalResultStrip
           search={search}
           parking={parking}
