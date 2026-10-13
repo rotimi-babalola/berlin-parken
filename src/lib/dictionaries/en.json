@@ -28,6 +28,8 @@
   "search.suggestEmpty": "No Berlin addresses found. Try a street and house number.",
   "search.suggestError": "Address search is temporarily unavailable.",
   "search.suggestReady": "{count} Berlin addresses found. Use the arrow keys to choose one.",
+  "search.historyTitle": "Recent searches",
+  "search.historyEmpty": "No recent searches yet. Destinations you check will appear here.",
   "search.parkingUnavailable": "Parking data is temporarily unavailable.",
   "search.zoneUnavailable": "Parking-zone data is temporarily unavailable.",
   "search.eventUnavailable": "Planned-event data is temporarily unavailable.",

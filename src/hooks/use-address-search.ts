@@ -17,6 +17,7 @@ import {
 } from "@/lib/parking-context";
 import { useLocale } from "@/lib/i18n";
 import { buildResultsUrl, type ResultsQuery } from "@/lib/results-url";
+import { loadRecentSearches, recordRecentSearch } from "@/lib/search-history";
 import { useAddressSuggestions } from "./use-address-suggestions";
 
 export type SearchReady = {
@@ -60,6 +61,8 @@ export function useAddressSearch(initial?: ResultsQuery) {
   const [timeError, setTimeError] = useState(false);
   const [activeIndex, setActiveIndex] = useState(-1);
   const [suggestionsDismissed, setSuggestionsDismissed] = useState(false);
+  const [history, setHistory] = useState<AddressSuggestion[]>([]);
+  const [historyOpen, setHistoryOpen] = useState(false);
   const [submitError, setSubmitError] = useState(false);
   const [searchReady, setSearchReady] = useState<SearchReady | null>(null);
   const [parking, setParking] = useState<ParkingResult | null>(null);
@@ -74,6 +77,16 @@ export function useAddressSearch(initial?: ResultsQuery) {
     retry,
   } = useAddressSuggestions(query, !selected);
   const visibleSuggestions = suggestionsDismissed ? [] : suggestions;
+  // Past searches surface only when the field is focused and empty, so
+  // live suggestions always win once the user starts typing.
+  const showRecents =
+    historyOpen && !suggestionsDismissed && query.trim() === "";
+  const dropdownItems =
+    visibleSuggestions.length > 0
+      ? visibleSuggestions
+      : showRecents
+        ? history
+        : [];
 
   useEffect(() => {
     if (activeIndex >= 0)
@@ -94,9 +107,20 @@ export function useAddressSearch(initial?: ResultsQuery) {
     setQuery(suggestion.label);
     setActiveIndex(-1);
     setSuggestionsDismissed(false);
+    setHistoryOpen(false);
     setSubmitError(false);
     setSearchReady(null);
     setParking(null);
+  }
+
+  function handleInputFocus() {
+    setHistory(loadRecentSearches());
+    setSuggestionsDismissed(false);
+    setHistoryOpen(true);
+  }
+
+  function handleInputBlur() {
+    setHistoryOpen(false);
   }
 
   function handleQueryChange(value: string) {
@@ -111,27 +135,28 @@ export function useAddressSearch(initial?: ResultsQuery) {
   }
 
   function handleKeyDown(event: KeyboardEvent<HTMLInputElement>) {
-    if (event.key === "ArrowDown" && suggestions.length) {
+    if (event.key === "ArrowDown" && dropdownItems.length) {
       event.preventDefault();
       setSuggestionsDismissed(false);
       setActiveIndex((index) =>
-        index < 0 ? 0 : (index + 1) % suggestions.length,
+        index < 0 ? 0 : (index + 1) % dropdownItems.length,
       );
-    } else if (event.key === "ArrowUp" && suggestions.length) {
+    } else if (event.key === "ArrowUp" && dropdownItems.length) {
       event.preventDefault();
       setSuggestionsDismissed(false);
       setActiveIndex((index) =>
-        index <= 0 ? suggestions.length - 1 : index - 1,
+        index <= 0 ? dropdownItems.length - 1 : index - 1,
       );
     } else if (
       event.key === "Enter" &&
       activeIndex >= 0 &&
-      visibleSuggestions.length
+      dropdownItems.length
     ) {
       event.preventDefault();
-      chooseSuggestion(visibleSuggestions[activeIndex]);
+      chooseSuggestion(dropdownItems[activeIndex]);
     } else if (event.key === "Escape") {
       setSuggestionsDismissed(true);
+      setHistoryOpen(false);
       setActiveIndex(-1);
     }
   }
@@ -227,6 +252,8 @@ export function useAddressSearch(initial?: ResultsQuery) {
       return;
     }
     // Results live on their own shareable page; the URL is the query.
+    recordRecentSearch(selected);
+    setHistoryOpen(false);
     router.push(
       buildResultsUrl({
         label: selected.label,
@@ -266,6 +293,11 @@ export function useAddressSearch(initial?: ResultsQuery) {
     timeError,
     activeIndex,
     visibleSuggestions,
+    dropdownItems,
+    recentsHeader:
+      showRecents && history.length > 0 ? t("search.historyTitle") : null,
+    recentsEmpty: showRecents && history.length === 0,
+    dropdownOpen: visibleSuggestions.length > 0 || showRecents,
     suggestionState,
     submitError,
     searchReady,
@@ -277,6 +309,8 @@ export function useAddressSearch(initial?: ResultsQuery) {
     liveMessage,
     chooseSuggestion,
     handleQueryChange,
+    handleInputFocus,
+    handleInputBlur,
     handleKeyDown,
     handleSubmit,
     handleRadiusChange: (value: number) => {

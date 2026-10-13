@@ -299,3 +299,26 @@ test("recovers from a failed parking request with keyboard use on narrow screens
       });
   }
 });
+
+test("shows recent searches when the destination input is focused", async ({
+  page,
+}) => {
+  await page.goto("/");
+  const address = page.getByRole("combobox", { name: "Destination address" });
+  await address.focus();
+  await expect(page.getByText("No recent searches yet")).toBeVisible();
+
+  await address.fill("Alexanderplatz");
+  await page.getByRole("option", { name: /Alexanderplatz 1/ }).click();
+  await page.getByRole("button", { name: "Check nearby streets" }).click();
+  await page.waitForURL(/\/results\?/);
+
+  await page.goto("/");
+  await page.getByRole("combobox", { name: "Destination address" }).focus();
+  await page.getByRole("option", { name: /Alexanderplatz 1/ }).click();
+  await expect(
+    page.getByRole("combobox", { name: "Destination address" }),
+  ).toHaveValue("Alexanderplatz 1");
+  await page.getByRole("button", { name: "Check nearby streets" }).click();
+  await page.waitForURL(/\/results\?.*label=Alexanderplatz/);
+});

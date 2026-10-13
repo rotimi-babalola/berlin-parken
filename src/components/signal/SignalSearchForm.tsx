@@ -18,6 +18,9 @@ type Props = {
   timeError: boolean;
   activeIndex: number;
   suggestions: AddressSuggestion[];
+  recentsHeader: string | null;
+  recentsEmpty: boolean;
+  dropdownOpen: boolean;
   suggestionState: "idle" | "loading" | "empty" | "error" | "ready";
   submitError: boolean;
   liveMessage: string;
@@ -25,6 +28,8 @@ type Props = {
   arrivalRef: RefObject<HTMLInputElement | null>;
   optionRefs: RefObject<Array<HTMLLIElement | null>>;
   onQueryChange: (value: string) => void;
+  onInputFocus: () => void;
+  onInputBlur: () => void;
   onChooseSuggestion: (suggestion: AddressSuggestion) => void;
   onKeyDown: (event: KeyboardEvent<HTMLInputElement>) => void;
   onSubmit: (event: SubmitEvent<HTMLFormElement>) => void;
@@ -47,6 +52,9 @@ export function SignalSearchForm({
   timeError,
   activeIndex,
   suggestions,
+  recentsHeader,
+  recentsEmpty,
+  dropdownOpen,
   suggestionState,
   submitError,
   liveMessage,
@@ -54,6 +62,8 @@ export function SignalSearchForm({
   arrivalRef,
   optionRefs,
   onQueryChange,
+  onInputFocus,
+  onInputBlur,
   onChooseSuggestion,
   onKeyDown,
   onSubmit,
@@ -84,7 +94,7 @@ export function SignalSearchForm({
             placeholder={t("search.placeholder")}
             aria-autocomplete="list"
             aria-controls={listId}
-            aria-expanded={suggestions.length > 0}
+            aria-expanded={dropdownOpen}
             aria-activedescendant={
               activeIndex >= 0 && suggestions.length
                 ? `${listId}-option-${activeIndex}`
@@ -94,37 +104,54 @@ export function SignalSearchForm({
             aria-invalid={submitError || undefined}
             aria-busy={suggestionState === "loading"}
             onChange={(event) => onQueryChange(event.target.value)}
+            onFocus={onInputFocus}
+            onBlur={onInputBlur}
             onKeyDown={onKeyDown}
           />
           {suggestionState === "loading" && (
             <span className={styles.spinner} aria-hidden="true" />
           )}
-          {suggestions.length > 0 && (
+          {(suggestions.length > 0 || recentsEmpty) && (
             <ul
               className={styles.suggestions}
               id={listId}
               role="listbox"
               aria-label={t("search.suggestionsLabel")}
             >
-              {suggestions.map((suggestion, index) => (
+              {recentsHeader && (
                 <li
-                  ref={(node) => {
-                    optionRefs.current[index] = node;
-                  }}
-                  className={`${styles.suggestion} ${activeIndex === index ? styles.activeSuggestion : ""}`}
-                  id={`${listId}-option-${index}`}
-                  key={suggestion.id}
-                  role="option"
-                  aria-selected={activeIndex === index}
-                  onMouseDown={(event) => event.preventDefault()}
-                  onClick={() => onChooseSuggestion(suggestion)}
+                  role="presentation"
+                  className={styles.recentsHeader}
+                  aria-hidden="true"
                 >
-                  <span>
-                    {suggestion.label}
-                    <small>{suggestion.detail}</small>
-                  </span>
+                  {recentsHeader}
                 </li>
-              ))}
+              )}
+              {recentsEmpty ? (
+                <li role="presentation" className={styles.recentsEmpty}>
+                  {t("search.historyEmpty")}
+                </li>
+              ) : (
+                suggestions.map((suggestion, index) => (
+                  <li
+                    ref={(node) => {
+                      optionRefs.current[index] = node;
+                    }}
+                    className={`${styles.suggestion} ${activeIndex === index ? styles.activeSuggestion : ""}`}
+                    id={`${listId}-option-${index}`}
+                    key={suggestion.id}
+                    role="option"
+                    aria-selected={activeIndex === index}
+                    onMouseDown={(event) => event.preventDefault()}
+                    onClick={() => onChooseSuggestion(suggestion)}
+                  >
+                    <span>
+                      {suggestion.label}
+                      <small>{suggestion.detail}</small>
+                    </span>
+                  </li>
+                ))
+              )}
             </ul>
           )}
         </div>

@@ -266,6 +266,21 @@
   color: #506659;
   font-size: 12px;
 }
+.recentsHeader {
+  padding: 8px 12px 4px;
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.13em;
+  color: #3e664c;
+  cursor: default;
+}
+.recentsEmpty {
+  padding: 10px 12px;
+  font-size: 13px;
+  line-height: 1.5;
+  color: #506659;
+  cursor: default;
+}
 .radiusGroup {
   min-width: 0;
   margin-top: 22px;

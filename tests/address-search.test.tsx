@@ -49,6 +49,7 @@ afterEach(() => {
   vi.unstubAllGlobals();
   vi.restoreAllMocks();
   pushMock.mockClear();
+  window.localStorage.clear();
   searchParamsValue = new URLSearchParams();
   if (originalScrollIntoView) {
     Object.defineProperty(
@@ -122,6 +123,57 @@ describe("SignalPage", () => {
     expect(
       Number.isFinite(Date.parse(url.searchParams.get("arrival") ?? "")),
     ).toBe(true);
+  });
+
+  it("shows an empty recent-searches message on focus without history", async () => {
+    stubGeocode();
+    render(<SignalPage />);
+    const input = screen.getByRole("combobox", { name: "Destination address" });
+    fireEvent.focus(input);
+
+    const listbox = await screen.findByRole("listbox");
+    await screen.findByText(/No recent searches yet/);
+    expect(within(listbox).queryAllByRole("option")).toHaveLength(0);
+    expect(pushMock).not.toHaveBeenCalled();
+  });
+
+  it("records a search and offers it as a recent option on next focus", async () => {
+    stubGeocode();
+    render(<SignalPage />);
+    const input = screen.getByRole("combobox", { name: "Destination address" });
+    fireEvent.change(input, { target: { value: "Alexanderplatz" } });
+    fireEvent.click(
+      await screen.findByRole("option", { name: /Alexanderplatz 1/ }),
+    );
+    fireEvent.click(
+      screen.getByRole("button", { name: "Check nearby streets" }),
+    );
+    await waitFor(() => expect(pushMock).toHaveBeenCalledTimes(1));
+    cleanup();
+
+    render(<SignalPage />);
+    const again = screen.getByRole("combobox", {
+      name: "Destination address",
+    });
+    fireEvent.focus(again);
+
+    const listbox = await screen.findByRole("listbox");
+    expect(
+      await within(listbox).findByRole("option", {
+        name: /Alexanderplatz 1/,
+      }),
+    ).toBeTruthy();
+    fireEvent.click(
+      within(listbox).getByRole("option", { name: /Alexanderplatz 1/ }),
+    );
+    expect((again as HTMLInputElement).value).toBe("Alexanderplatz 1");
+    fireEvent.click(
+      screen.getByRole("button", { name: "Check nearby streets" }),
+    );
+    await waitFor(() => expect(pushMock).toHaveBeenCalledTimes(2));
+    const url = new URL(pushMock.mock.calls[1][0], "http://localhost");
+    expect(url.pathname).toBe("/results");
+    expect(url.searchParams.get("label")).toBe("Alexanderplatz 1");
   });
 
   it("retries the same query and returns focus to the address field", async () => {

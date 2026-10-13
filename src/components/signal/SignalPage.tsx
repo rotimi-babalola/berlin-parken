@@ -29,7 +29,10 @@ export function SignalPage() {
               durationMinutes={search.durationMinutes}
               timeError={search.timeError}
               activeIndex={search.activeIndex}
-              suggestions={search.visibleSuggestions}
+              suggestions={search.dropdownItems}
+              recentsHeader={search.recentsHeader}
+              recentsEmpty={search.recentsEmpty}
+              dropdownOpen={search.dropdownOpen}
               suggestionState={search.suggestionState}
               submitError={search.submitError}
               liveMessage={search.liveMessage}
@@ -37,6 +40,8 @@ export function SignalPage() {
               arrivalRef={search.arrivalRef}
               optionRefs={search.optionRefs}
               onQueryChange={search.handleQueryChange}
+              onInputFocus={search.handleInputFocus}
+              onInputBlur={search.handleInputBlur}
               onChooseSuggestion={search.chooseSuggestion}
               onKeyDown={search.handleKeyDown}
               onSubmit={search.handleSubmit}

@@ -28,6 +28,8 @@
   "search.suggestEmpty": "Keine Berliner Adressen gefunden. Versuche Straße und Hausnummer.",
   "search.suggestError": "Die Adresssuche ist vorübergehend nicht verfügbar.",
   "search.suggestReady": "{count} Berliner Adressen gefunden. Wähle mit den Pfeiltasten eine aus.",
+  "search.historyTitle": "Letzte Suchen",
+  "search.historyEmpty": "Noch keine kürzlichen Suchen. Geprüfte Ziele erscheinen hier.",
   "search.parkingUnavailable": "Parkdaten sind vorübergehend nicht verfügbar.",
   "search.zoneUnavailable": "Zonendaten sind vorübergehend nicht verfügbar.",
   "search.eventUnavailable": "Veranstaltungsdaten sind vorübergehend nicht verfügbar.",
