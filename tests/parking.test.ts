@@ -432,24 +432,30 @@ test("preserves outside loading-zone rule details on an eligible candidate", asy
   });
 });
 
-test("derives a stable candidate id when the source omits one", async (t) => {
-  mockOutsideFetch(t, async () => {
-    const base = feature(
-      "ignored",
-      0,
-      0,
-      3,
-      "Parken (ohne Beschränkungen)",
-      "No Id Street",
-    );
-    return collection([
+test("derives a stable candidate id from geometry when the source omits one", async (t) => {
+  const base = feature(
+    "ignored",
+    0,
+    0,
+    3,
+    "Parken (ohne Beschränkungen)",
+    "No Id Street",
+  );
+  const [[x, y]] = base.geometry.coordinates[0];
+  mockOutsideFetch(t, async () =>
+    collection([
       { type: "Feature", geometry: base.geometry, properties: base.properties },
-    ]);
-  });
+    ]),
+  );
 
+  // The id is anchored to the segment's own geometry, not the destination
+  // point, so a different query point must yield the same id.
   const first = await getNearbyParking(13.405, 52.52, 100);
   const shifted = await getNearbyParking(13.4055, 52.52, 100);
-  assert.match(first.candidates[0].id, /^No Id Street@\d+,\d+$/);
+  assert.equal(
+    first.candidates[0].id,
+    `No Id Street@${Math.round(x)},${Math.round(y)}`,
+  );
   assert.equal(first.candidates[0].id, shifted.candidates[0].id);
 });
 

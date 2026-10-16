@@ -529,8 +529,8 @@ function classifyByValidity(
     ? outcomes.active
     : outcomes.inactive;
 }
-// The layer's own rule vocabulary, read from the mapped record once so the
-// classifier and the preserved candidate details cannot drift apart. Empty
+// The single source of each layer's rule vocabulary, shared by the classifier
+// and the preserved candidate details so the two cannot drift apart. Empty
 // means the mapped record states no such rule.
 function ruleFields(
   properties: Record<string, unknown>,
