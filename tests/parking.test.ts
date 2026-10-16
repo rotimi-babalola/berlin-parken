@@ -491,6 +491,16 @@ test("reports an empty candidate list when every mapped feature is ineligible", 
   assert.deepEqual(result.candidates, []);
 });
 
+test("always returns a candidates array, even with no parking data", async (t) => {
+  mockOutsideFetch(t, async () => new Response("busy", { status: 429 }));
+  const unavailable = await getNearbyParking(13.405, 52.52, 500);
+  assert.deepEqual(unavailable.candidates, []);
+
+  mockOutsideFetch(t, async () => collection([], { totalFeatures: 0 }));
+  const empty = await getNearbyParking(13.405, 52.52, 500);
+  assert.deepEqual(empty.candidates, []);
+});
+
 test("reports a rate-limited parking service as unavailable", async (t) => {
   mockOutsideFetch(t, async () => new Response("busy", { status: 429 }));
 
