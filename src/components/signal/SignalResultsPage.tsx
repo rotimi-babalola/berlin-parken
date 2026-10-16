@@ -78,6 +78,7 @@ export function SignalResultsPage() {
             unknownSpaces: 0,
             featureCount: 0,
             streets: [],
+            candidates: [],
             zones: {
               source: {
                 status: "unavailable",

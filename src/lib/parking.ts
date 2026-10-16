@@ -3,6 +3,28 @@ import { fetchWfsFeatures, wfsParams } from "./wfs.ts";
 export type ParkingUsability =
   "usable" | "conditional" | "restricted" | "unknown";
 
+// An eligible mapped parking segment: a usable or conditional feature with
+// positive mapped capacity. Unlike the street-wide totals, each candidate
+// keeps its own geometry and source-backed rule details so downstream
+// ranking and navigation can point at a specific area.
+export type ParkingCandidate = {
+  id: string;
+  streetName?: string;
+  usability: "usable" | "conditional";
+  /** Outside layer's mapped `category`; inside layers carry their rules below. */
+  sourceCategory?: string;
+  mappedSpaces: number;
+  distanceMeters: number;
+  /** EPSG:25833 metres straight from the Berlin WFS, not WGS84 lng/lat. */
+  geometry: Geometry;
+  rules?: {
+    restriction?: string;
+    hours?: string;
+    fee?: string;
+    maxStay?: string;
+  };
+};
+
 export type ParkingSummary = {
   status: "available" | "empty" | "partial" | "unavailable";
   fetchedAt?: string;
@@ -19,6 +41,7 @@ export type ParkingSummary = {
     features: number;
     nearestMeters: number;
   }>;
+  candidates: ParkingCandidate[];
 };
 
 export type Position = [number, number];
@@ -506,15 +529,38 @@ function classifyByValidity(
     ? outcomes.active
     : outcomes.inactive;
 }
+// The layer's own rule vocabulary, read from the mapped record once so the
+// classifier and the preserved candidate details cannot drift apart. Empty
+// means the mapped record states no such rule.
+function ruleFields(
+  properties: Record<string, unknown>,
+  inside: boolean,
+): { restriction: string; hours: string; fee: string; maxStay: string } {
+  if (inside)
+    return {
+      restriction:
+        `${textOf(properties, "beschraenkung")} ${textOf(properties, "grund_fuer_beschraenkung")}`.trim(),
+      hours: textOf(properties, "geltungszeit_der_beschraenkung"),
+      fee: textOf(properties, "parkgebuehr"),
+      maxStay: textOf(properties, "hoechstparkdauer"),
+    };
+  return {
+    restriction: textOf(properties, "ladezone_einschraenkungen"),
+    hours: textOf(properties, "geltungszeit_ladezone"),
+    fee: "",
+    maxStay: "",
+  };
+}
+
 function classify(
   category: string,
   publicLand: string,
   properties: Record<string, unknown> = {},
   stay?: StayInterval,
 ): ParkingUsability {
+  const { hours: loadingTime } = ruleFields(properties, false);
   if (category === "Parken (ohne Beschränkungen)") {
     if (publicLand !== "Ja") return "restricted";
-    const loadingTime = textOf(properties, "geltungszeit_ladezone");
     if (!loadingTime) return "usable";
     // A loading-window ban applies only while it overlaps the stay;
     // uninterpretable hours are never treated as permission.
@@ -535,7 +581,6 @@ function classify(
     return "conditional";
   if (category === "Nutzungsgruppe") return "restricted";
   if (["Parkverbot", "Ladezone", "Beschränkungen"].includes(category)) {
-    const loadingTime = textOf(properties, "geltungszeit_ladezone");
     if (!loadingTime) return "restricted";
     return classifyByValidity(loadingTime, stay, {
       active: "restricted",
@@ -556,11 +601,12 @@ function classifyInside(
     properties.carsharing === "ja"
   )
     return "restricted";
-  const restriction =
-    `${textOf(properties, "beschraenkung")} ${textOf(properties, "grund_fuer_beschraenkung")}`.trim();
-  const validity = textOf(properties, "geltungszeit_der_beschraenkung");
-  const fee = textOf(properties, "parkgebuehr");
-  const maxStay = textOf(properties, "hoechstparkdauer");
+  const {
+    restriction,
+    hours: validity,
+    fee,
+    maxStay,
+  } = ruleFields(properties, true);
   if (restriction) {
     if (
       /bewohner|anwohner|carsharing|schwerbehindert|taxi|bus|behindert/i.test(
@@ -598,6 +644,67 @@ function classifyInside(
     });
   }
   return "usable";
+}
+
+// Source-backed rule fields for an eligible segment, kept in the layer's own
+// vocabulary. Empty means the mapped record states no such rule.
+function candidateRules(
+  properties: Record<string, unknown>,
+  inside: boolean,
+): ParkingCandidate["rules"] {
+  const { restriction, hours, fee, maxStay } = ruleFields(properties, inside);
+  const rules: NonNullable<ParkingCandidate["rules"]> = {
+    ...(restriction ? { restriction } : {}),
+    ...(hours ? { hours } : {}),
+    ...(fee ? { fee } : {}),
+    ...(maxStay ? { maxStay } : {}),
+  };
+  return Object.keys(rules).length ? rules : undefined;
+}
+
+// Stable id: the service feature id when present, otherwise a
+// geometry-anchored fallback so the same segment keeps the same id across
+// searches instead of depending on ordering or the destination point.
+function candidateId(
+  sourceId: unknown,
+  streetName: string,
+  geometry: Geometry,
+): string {
+  if (sourceId !== undefined && sourceId !== null && String(sourceId).trim())
+    return String(sourceId);
+  const polygon =
+    geometry.type === "Polygon"
+      ? (geometry.coordinates as Polygon)
+      : (geometry.coordinates as Polygon[])[0];
+  const [x = 0, y = 0] = polygon?.[0]?.[0] ?? [];
+  return `${streetName}@${Math.round(x)},${Math.round(y)}`;
+}
+
+// One eligible feature as a located, rule-carrying candidate, or undefined
+// when the feature has no geometry to anchor it.
+function toCandidate(
+  feature: Feature,
+  point: Position,
+  inside: boolean,
+  usability: "usable" | "conditional",
+  capacity: number,
+): ParkingCandidate | undefined {
+  const geometry = feature.geometry;
+  if (!geometry) return undefined;
+  const properties = feature.properties;
+  const streetName = String(properties.strassenname ?? "").trim();
+  return {
+    id: candidateId(feature.id ?? properties.polygonid, streetName, geometry),
+    streetName: streetName || undefined,
+    usability,
+    sourceCategory: inside
+      ? undefined
+      : textOf(properties, "category") || undefined,
+    mappedSpaces: capacity,
+    distanceMeters: Math.round(geometryDistance(point, geometry)),
+    geometry,
+    rules: candidateRules(properties, inside),
+  };
 }
 
 function validCollection(value: unknown): value is FeatureCollection {
@@ -667,6 +774,7 @@ export async function getNearbyParking(
     unknownSpaces: 0,
     featureCount: 0,
     streets: [],
+    candidates: [],
   });
   const [east, north] = toEpsg25833(longitude, latitude);
   const layers = ["parkplaetze:parkplaetze", "parkplaetze:parkplaetze_aussen"];
@@ -704,6 +812,10 @@ export async function getNearbyParking(
   );
 }
 
+// Payload bound: the nearest eligible segments are enough to plan a first
+// and backup area, so the API does not carry every polygon in the radius.
+const MAX_CANDIDATES = 25;
+
 function summarize(
   features: Feature[],
   point: Position,
@@ -729,11 +841,13 @@ function summarize(
     unknownSpaces: 0,
     featureCount: features.length,
     streets: [],
+    candidates: [],
   };
   const streets = new Map<
     string,
     { mappedSpaces: number; features: number; nearestMeters: number }
   >();
+  const candidates: ParkingCandidate[] = [];
   for (const feature of features) {
     const properties = feature.properties;
     const inside = "errechnete_anzahl_parkplaetze" in properties;
@@ -756,26 +870,36 @@ function summarize(
     else if (usability === "conditional") result.conditionalSpaces += capacity;
     else if (usability === "restricted") result.restrictedSpaces += capacity;
     else result.unknownSpaces += capacity;
-    // Only mapped usable or conditional capacity can support a street suggestion.
+    // Only mapped usable or conditional capacity can support a suggestion.
     if ((usability !== "usable" && usability !== "conditional") || !capacity)
       continue;
-    const name = String(properties.strassenname ?? "").trim();
-    if (name && feature.geometry) {
-      const rounded = Math.round(geometryDistance(point, feature.geometry));
-      const street = streets.get(name) ?? {
+    const candidate = toCandidate(feature, point, inside, usability, capacity);
+    if (!candidate) continue;
+    candidates.push(candidate);
+    const streetName = candidate.streetName;
+    if (streetName) {
+      const street = streets.get(streetName) ?? {
         mappedSpaces: 0,
         features: 0,
-        nearestMeters: rounded,
+        nearestMeters: candidate.distanceMeters,
       };
       street.mappedSpaces += capacity;
       street.features++;
-      street.nearestMeters = Math.min(street.nearestMeters, rounded);
-      streets.set(name, street);
+      street.nearestMeters = Math.min(
+        street.nearestMeters,
+        candidate.distanceMeters,
+      );
+      streets.set(streetName, street);
     }
   }
   result.streets = [...streets]
     .map(([name, values]) => ({ name, ...values }))
     .sort((a, b) => b.mappedSpaces - a.mappedSpaces)
     .slice(0, 8);
+  result.candidates = candidates
+    .sort(
+      (a, b) => a.distanceMeters - b.distanceMeters || a.id.localeCompare(b.id),
+    )
+    .slice(0, MAX_CANDIDATES);
   return result;
 }
