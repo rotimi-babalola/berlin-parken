@@ -21,24 +21,22 @@ type Destination = {
   providerId: string;
 };
 
-type ParkingCategory =
-  | "unrestricted"
-  | "time_limited"
-  | "duration_limited"
-  | "user_group"
-  | "loading_zone"
-  | "prohibited"
-  | "unknown";
-
-type StreetParkingFeature = {
+type ParkingCandidate = {
   id: string;
   streetName?: string;
-  category: ParkingCategory;
+  usability: "usable" | "conditional";
+  /** Outside layer's mapped `category`; inside layers carry their rules below. */
   sourceCategory?: string;
-  mappedSpaces?: number;
-  publicStreetLand?: boolean;
+  mappedSpaces: number;
   distanceMeters: number;
+  /** EPSG:25833 metres straight from the Berlin WFS, not WGS84 lng/lat. */
   geometry: GeoJSON.Geometry;
+  rules?: {
+    restriction?: string;
+    hours?: string;
+    fee?: string;
+    maxStay?: string;
+  };
 };
 
 type ParkingZone = {
@@ -88,6 +86,7 @@ type ParkingSearchResult = {
       nearestFeatureMeters: number;
     }>;
   };
+  candidates: ParkingCandidate[];
   zones: ParkingZone[];
   events: PlannedEvent[];
   assessment?: {
@@ -106,7 +105,8 @@ type ParkingSearchResult = {
 Implementation rules:
 
 - `SourceState.status: "empty"` means the request succeeded with no matching records; unavailable or failed requests must not be represented as zero supply/no events.
-- Source categories are preserved alongside a normalized category. Missing or unrecognized values map to `unknown` and are not counted as available capacity.
+- Each feature is classified into a `usability` of `usable`, `conditional`, `restricted`, or `unknown`. Raw source values are preserved (`sourceCategory`, `rules`); missing or unrecognized values become `unknown` and are not counted as available capacity.
+- `candidates` carries one entry per eligible feature — `usable` or `conditional` with positive mapped capacity — so a result names specific mapped areas instead of only street-wide totals. Each entry keeps its own EPSG:25833 `geometry` and straight-line `distanceMeters`, the `usability`, and the layer's source rule fields (`restriction`, `hours`, `fee`, `maxStay`). Restricted and unknown features are never candidates. The array is always present and sorted nearest-first, capped at the 25 nearest candidates; it is empty when nothing qualifies.
 - Geometry inclusion uses the actual selected radius after the WFS BBOX candidate query. Distance is straight-line to geometry unless an explicitly named routing source is introduced.
 - A supply difficulty band, if shown, must have documented deterministic thresholds and be labelled as an estimate from mapped supply. Its basis must cite available data fields and never imply observed occupancy.
 - The current mapped-supply label uses total mapped spaces in the selected radius: fewer than 400 is scarce, 400–1,200 is moderate, and more than 1,200 is ample. This is a fixed descriptive band, not a prediction of finding a free space; the result shows unrestricted, conditional, restricted, and unknown capacity separately. Revisit these bands only with observed calibration data.

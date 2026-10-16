@@ -316,6 +316,197 @@ test("does not suggest a street with zero mapped eligible capacity", async (t) =
   assert.deepEqual(result.streets, []);
 });
 
+test("exposes eligible candidates with a stable location and source-backed category", async (t) => {
+  mockOutsideFetch(t, async () =>
+    collection([
+      feature("free", 0, 0, 10, "Parken (ohne Beschränkungen)", "Free Street"),
+      feature(
+        "timed",
+        40,
+        0,
+        5,
+        "Parken mit zeitlicher Beschränkung",
+        "Timed Street",
+      ),
+    ]),
+  );
+
+  const result = await getNearbyParking(13.405, 52.52, 100);
+
+  assert.deepEqual(
+    result.candidates.map((candidate) => ({
+      id: candidate.id,
+      streetName: candidate.streetName,
+      usability: candidate.usability,
+      sourceCategory: candidate.sourceCategory,
+      mappedSpaces: candidate.mappedSpaces,
+      distanceMeters: candidate.distanceMeters,
+      geometryType: candidate.geometry.type,
+    })),
+    [
+      {
+        id: "free",
+        streetName: "Free Street",
+        usability: "usable",
+        sourceCategory: "Parken (ohne Beschränkungen)",
+        mappedSpaces: 10,
+        distanceMeters: 0,
+        geometryType: "Polygon",
+      },
+      {
+        id: "timed",
+        streetName: "Timed Street",
+        usability: "conditional",
+        sourceCategory: "Parken mit zeitlicher Beschränkung",
+        mappedSpaces: 5,
+        distanceMeters: 35,
+        geometryType: "Polygon",
+      },
+    ],
+  );
+});
+
+test("never exposes restricted or unknown features as candidates", async (t) => {
+  mockOutsideFetch(t, async () =>
+    collection([
+      feature("ok", 0, 0, 4, "Parken (ohne Beschränkungen)", "Good Street"),
+      feature("banned", 20, 0, 30, "Parkverbot", "Banned Street"),
+      feature("unknown", 40, 0, 9, "New Category", "Unknown Road"),
+    ]),
+  );
+
+  const result = await getNearbyParking(13.405, 52.52, 100);
+
+  assert.deepEqual(
+    result.candidates.map(({ id }) => id),
+    ["ok"],
+  );
+  assert.equal(result.restrictedSpaces, 30);
+  assert.equal(result.unknownSpaces, 9);
+});
+
+test("keeps every inside rule field on an eligible candidate", async (t) => {
+  mockInsideFetch(t, {
+    beschraenkung: "Haltverbot",
+    grund_fuer_beschraenkung: "Ladezone",
+    geltungszeit_der_beschraenkung: "Mo-Fr 07:00-15:00 Uhr",
+    hoechstparkdauer: "2 Stunden",
+    parkgebuehr: "2,00 Euro",
+  });
+
+  const result = await getNearbyParking(13.405, 52.52, 100, {
+    arrivalMs: monday("16:00:00"),
+    durationMinutes: 60,
+  });
+
+  assert.equal(result.candidates.length, 1);
+  assert.equal(result.candidates[0].usability, "conditional");
+  assert.deepEqual(result.candidates[0].rules, {
+    restriction: "Haltverbot Ladezone",
+    hours: "Mo-Fr 07:00-15:00 Uhr",
+    fee: "2,00 Euro",
+    maxStay: "2 Stunden",
+  });
+});
+
+test("preserves outside loading-zone rule details on an eligible candidate", async (t) => {
+  mockOutsideFetch(t, async () =>
+    collection([
+      outsideTimedFeature("Parkverbot", {
+        geltungszeit_ladezone: "Mo-Fr 07:00-15:00 Uhr",
+        ladezone_einschraenkungen: "Ladezone",
+      }),
+    ]),
+  );
+
+  const result = await getNearbyParking(13.405, 52.52, 100, {
+    arrivalMs: monday("16:00:00"),
+    durationMinutes: 60,
+  });
+
+  assert.equal(result.candidates.length, 1);
+  assert.equal(result.candidates[0].usability, "usable");
+  assert.deepEqual(result.candidates[0].rules, {
+    restriction: "Ladezone",
+    hours: "Mo-Fr 07:00-15:00 Uhr",
+  });
+});
+
+test("derives a stable candidate id from geometry when the source omits one", async (t) => {
+  const base = feature(
+    "ignored",
+    0,
+    0,
+    3,
+    "Parken (ohne Beschränkungen)",
+    "No Id Street",
+  );
+  const [[x, y]] = base.geometry.coordinates[0];
+  mockOutsideFetch(t, async () =>
+    collection([
+      { type: "Feature", geometry: base.geometry, properties: base.properties },
+    ]),
+  );
+
+  // The id is anchored to the segment's own geometry, not the destination
+  // point, so a different query point must yield the same id.
+  const first = await getNearbyParking(13.405, 52.52, 100);
+  const shifted = await getNearbyParking(13.4055, 52.52, 100);
+  assert.equal(
+    first.candidates[0].id,
+    `No Id Street@${Math.round(x)},${Math.round(y)}`,
+  );
+  assert.equal(first.candidates[0].id, shifted.candidates[0].id);
+});
+
+test("caps candidates at the nearest eligible segments", async (t) => {
+  mockOutsideFetch(t, async () =>
+    collection(
+      Array.from({ length: 30 }, (_, index) =>
+        feature(
+          `c${index}`,
+          10 + index * 3,
+          0,
+          1,
+          "Parken (ohne Beschränkungen)",
+          `Street ${index}`,
+        ),
+      ),
+      { totalFeatures: 30 },
+    ),
+  );
+
+  const result = await getNearbyParking(13.405, 52.52, 100);
+  assert.equal(result.candidates.length, 25);
+  assert.equal(result.candidates[0].id, "c0");
+});
+
+test("reports an empty candidate list when every mapped feature is ineligible", async (t) => {
+  mockOutsideFetch(t, async () =>
+    collection([
+      feature("banned", 0, 0, 12, "Parkverbot", "Banned Street"),
+      feature("zero", 20, 0, 0, "Parken (ohne Beschränkungen)", "Zero Street"),
+    ]),
+  );
+
+  const result = await getNearbyParking(13.405, 52.52, 100);
+
+  assert.equal(result.status, "available");
+  assert.equal(result.featureCount, 2);
+  assert.deepEqual(result.streets, []);
+  assert.deepEqual(result.candidates, []);
+});
+
+test("always returns a candidates array, even with no parking data", async (t) => {
+  mockOutsideFetch(t, async () => new Response("busy", { status: 429 }));
+  const unavailable = await getNearbyParking(13.405, 52.52, 500);
+  assert.deepEqual(unavailable.candidates, []);
+
+  mockOutsideFetch(t, async () => collection([], { totalFeatures: 0 }));
+  const empty = await getNearbyParking(13.405, 52.52, 500);
+  assert.deepEqual(empty.candidates, []);
+});
+
 test("reports a rate-limited parking service as unavailable", async (t) => {
   mockOutsideFetch(t, async () => new Response("busy", { status: 429 }));
 
