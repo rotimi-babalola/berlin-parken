@@ -1,4 +1,5 @@
 import type { SearchReady } from "@/hooks/use-address-search";
+import { candidateMapUrl } from "@/lib/candidate-map";
 import { suggestedAreas, type ParkingSummary } from "@/lib/parking";
 import type { ParkingContext } from "@/lib/parking-context";
 import { useLocale } from "@/lib/i18n";
@@ -131,29 +132,42 @@ export function SignalResultStrip({
                 distance: area.distanceMeters,
               })}
             </small>
+            <a
+              className={styles.areaLink}
+              href={candidateMapUrl(
+                area,
+                search.destination.longitude,
+                search.destination.latitude,
+              )}
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              {t("signal.showAreaOnMap")}
+            </a>
           </div>
         ))}
         {!areas.length && (
           <div>
             <b>01</b>
             <strong>{t("signal.firstArea")}</strong>
-            <small>{t("signal.noArea")}</small>
-          </div>
-        )}
-        {areas.length < 2 && (
-          <div>
-            <b>02</b>
-            <strong>{t("signal.backupArea")}</strong>
-            <small>{t("signal.noBackup")}</small>
+            <small>
+              {t(
+                parking.candidates.length
+                  ? "signal.unnamedArea"
+                  : parking.status === "partial"
+                    ? "signal.noAreaPartial"
+                    : "signal.noArea",
+              )}
+            </small>
           </div>
         )}
         <div>
-          <b>03</b>
+          <b>{areas.length === 2 ? "03" : "02"}</b>
           <strong>{t("signal.checkZone")}</strong>
           <small>{zoneLabel}</small>
         </div>
         <div>
-          <b>04</b>
+          <b>{areas.length === 2 ? "04" : "03"}</b>
           <strong>{t("signal.checkEvent")}</strong>
           <small>
             {event

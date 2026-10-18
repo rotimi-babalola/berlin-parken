@@ -453,6 +453,12 @@
   color: #51685a;
   font-size: 12px;
 }
+.areaLink {
+  grid-column: 2;
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--detail-accent);
+}
 .checklist > small {
   display: block;
   margin-top: 12px;

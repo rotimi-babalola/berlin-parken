@@ -10,6 +10,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { SignalPage } from "@/components/signal/SignalPage";
 import { SignalResultsPage } from "@/components/signal/SignalResultsPage";
 import { LocaleProvider } from "@/lib/i18n";
+import { toEpsg25833 } from "@/lib/parking";
 import { defaultArrivalValue } from "@/lib/search-time";
 import type { AddressSuggestion } from "@/lib/geocoder/types";
 
@@ -325,12 +326,31 @@ describe("SignalPage", () => {
 });
 
 describe("SignalResultsPage", () => {
+  const point = toEpsg25833(13.415, 52.522);
+  const geometry = {
+    type: "Polygon",
+    coordinates: [
+      [point, [point[0] + 5, point[1]], [point[0], point[1] + 5], point],
+    ],
+  };
+
   function stubParking(payload: Record<string, unknown>) {
     vi.stubGlobal(
       "fetch",
       vi.fn(async () => ({
         ok: true,
-        json: async () => ({ candidates: [], ...payload }),
+        json: async () => ({
+          status: "available",
+          mappedSpaces: 0,
+          usableSpaces: 0,
+          conditionalSpaces: 0,
+          restrictedSpaces: 0,
+          unknownSpaces: 0,
+          featureCount: 0,
+          streets: [],
+          candidates: [],
+          ...payload,
+        }),
       })),
     );
   }
@@ -372,6 +392,7 @@ describe("SignalResultsPage", () => {
           usability: "usable",
           mappedSpaces: 20,
           distanceMeters: 120,
+          geometry,
         },
         {
           id: "same-street",
@@ -379,6 +400,7 @@ describe("SignalResultsPage", () => {
           usability: "usable",
           mappedSpaces: 10,
           distanceMeters: 130,
+          geometry,
         },
         {
           id: "backup",
@@ -386,6 +408,7 @@ describe("SignalResultsPage", () => {
           usability: "conditional",
           mappedSpaces: 15,
           distanceMeters: 200,
+          geometry,
         },
       ],
     });
@@ -395,6 +418,9 @@ describe("SignalResultsPage", () => {
     await screen.findByText("WHERE TO LOOK FIRST");
     expect(screen.getByText("First area: Torstraße")).toBeTruthy();
     expect(screen.getByText("Backup area: Linienstraße")).toBeTruthy();
+    expect(
+      screen.getAllByRole("link", { name: "Show mapped location ↗" }),
+    ).toHaveLength(2);
     expect(screen.queryByText("First area: Linienstraße")).toBeNull();
     expect(screen.getByText(/Partial parking data/)).toBeTruthy();
     expect(
@@ -420,6 +446,55 @@ describe("SignalResultsPage", () => {
       within(within(details).getByRole("list")).getAllByRole("listitem"),
     ).toHaveLength(3);
     expect(within(details).getByText(/120 m away/)).toBeTruthy();
+  });
+
+  it("does not show a backup when only one named area exists", async () => {
+    searchParamsValue = validResultsParams();
+    stubParking({
+      status: "available",
+      mappedSpaces: 10,
+      candidates: [
+        {
+          id: "only",
+          streetName: "Torstraße",
+          usability: "usable",
+          mappedSpaces: 10,
+          distanceMeters: 120,
+          geometry,
+        },
+      ],
+    });
+
+    render(<SignalResultsPage />);
+    await screen.findByText("First area: Torstraße");
+    expect(screen.queryByText(/Backup area/)).toBeNull();
+  });
+
+  it("distinguishes incomplete data from unnamed eligible areas", async () => {
+    searchParamsValue = validResultsParams();
+    stubParking({ status: "partial", mappedSpaces: 0 });
+    const view = render(<SignalResultsPage />);
+    await screen.findByText(/No eligible area in the returned parking data/);
+    view.unmount();
+
+    stubParking({
+      status: "available",
+      mappedSpaces: 10,
+      candidates: [
+        {
+          id: "unnamed",
+          usability: "usable",
+          mappedSpaces: 10,
+          distanceMeters: 120,
+          geometry,
+        },
+      ],
+    });
+    render(<SignalResultsPage />);
+    await screen.findByText(/Eligible mapped parking exists/);
+    expect(
+      screen.queryByText("No eligible mapped area for this stay."),
+    ).toBeNull();
   });
 
   it("pages through more than five events with the carousel controls", async () => {
