@@ -117,9 +117,6 @@ export function LocationMap({
           </span>
         );
       })}
-      <span className={styles.mapPin} aria-hidden="true">
-        P
-      </span>
       {areas.length > 0 && (
         <span className={styles.mapLegend} aria-hidden="true">
           {areas.map((area, index) => (

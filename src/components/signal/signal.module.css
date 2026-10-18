@@ -543,24 +543,6 @@
 .mapCredit a {
   color: inherit;
 }
-.mapPin {
-  position: absolute;
-  z-index: 1;
-  width: 54px;
-  height: 54px;
-  left: 50%;
-  top: 50%;
-  transform: translate(-50%, -50%);
-  display: grid;
-  place-items: center;
-  border-radius: 50%;
-  border: 5px solid #fff;
-  background: #ee6245;
-  color: #fff;
-  font-size: 22px;
-  font-weight: 900;
-  box-shadow: 0 6px 20px #203e2944;
-}
 .areaPin {
   position: absolute;
   z-index: 2;

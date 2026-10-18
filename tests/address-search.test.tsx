@@ -482,6 +482,7 @@ describe("SignalResultsPage", () => {
 
     const map = screen.getByRole("img", { name: /First area: Far Street/ });
     expect(within(map).getByText("Far Street")).toBeTruthy();
+    expect(within(map).queryByText("P")).toBeNull();
     const marker = map.querySelector(
       'span[style*="left: calc"]',
     ) as HTMLElement;
