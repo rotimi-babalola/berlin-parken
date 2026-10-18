@@ -8,6 +8,7 @@ import {
 } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { SignalPage } from "@/components/signal/SignalPage";
+import { LocationMap } from "@/components/signal/LocationMap";
 import { SignalResultsPage } from "@/components/signal/SignalResultsPage";
 import { LocaleProvider } from "@/lib/i18n";
 import { toEpsg25833 } from "@/lib/parking";
@@ -418,6 +419,11 @@ describe("SignalResultsPage", () => {
     await screen.findByText("WHERE TO LOOK FIRST");
     expect(screen.getByText("First area: Torstraße")).toBeTruthy();
     expect(screen.getByText("Backup area: Linienstraße")).toBeTruthy();
+    const map = screen.getByRole("img", {
+      name: /First area: Torstraße\. Backup area: Linienstraße/,
+    });
+    expect(within(map).getByText("Torstraße")).toBeTruthy();
+    expect(within(map).getByText("Linienstraße")).toBeTruthy();
     expect(
       screen.getAllByRole("link", { name: "Show mapped location ↗" }),
     ).toHaveLength(2);
@@ -446,6 +452,43 @@ describe("SignalResultsPage", () => {
       within(within(details).getByRole("list")).getAllByRole("listitem"),
     ).toHaveLength(3);
     expect(within(details).getByText(/120 m away/)).toBeTruthy();
+  });
+
+  it("fits a distant suggestion within the compact location map", () => {
+    const far = toEpsg25833(13.413, 52.529);
+    render(
+      <LocationMap
+        longitude={13.413}
+        latitude={52.521}
+        radiusMeters={1000}
+        destination="Alexanderplatz 1"
+        areas={[
+          {
+            id: "far",
+            streetName: "Far Street",
+            usability: "usable",
+            mappedSpaces: 10,
+            distanceMeters: 900,
+            geometry: {
+              type: "Polygon",
+              coordinates: [
+                [far, [far[0] + 5, far[1]], [far[0], far[1] + 5], far],
+              ],
+            },
+          },
+        ]}
+      />,
+    );
+
+    const map = screen.getByRole("img", { name: /First area: Far Street/ });
+    expect(within(map).getByText("Far Street")).toBeTruthy();
+    const marker = map.querySelector(
+      'span[style*="left: calc"]',
+    ) as HTMLElement;
+    const horizontalOffset = Number(marker.style.left.match(/(-?\d+)px/)?.[1]);
+    const verticalOffset = Number(marker.style.top.match(/(-?\d+)px/)?.[1]);
+    expect(Math.abs(horizontalOffset)).toBeLessThanOrEqual(100);
+    expect(Math.abs(verticalOffset)).toBeLessThanOrEqual(100);
   });
 
   it("does not show a backup when only one named area exists", async () => {

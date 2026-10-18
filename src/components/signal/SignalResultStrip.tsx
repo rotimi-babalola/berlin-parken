@@ -110,6 +110,7 @@ export function SignalResultStrip({
           latitude={search.destination.latitude}
           radiusMeters={search.radiusMeters}
           destination={search.destination.label}
+          areas={areas}
         />
       </div>
       <div className={styles.checklist}>

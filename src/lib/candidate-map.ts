@@ -6,11 +6,11 @@ import {
 
 // Use the nearest mapped boundary point so the pin identifies the selected
 // segment, even when several segments share a street name.
-export function candidateMapUrl(
+export function candidateMapPoint(
   candidate: ParkingCandidate,
   longitude: number,
   latitude: number,
-): string {
+): { longitude: number; latitude: number } {
   const origin = toEpsg25833(longitude, latitude);
   const polygons =
     candidate.geometry.type === "Polygon"
@@ -59,5 +59,16 @@ export function candidateMapUrl(
   const determinant = ex * ny - ey * nx;
   const pinLon = longitude + (step * (dx * ny - dy * nx)) / determinant;
   const pinLat = latitude + (step * (dy * ex - dx * ey)) / determinant;
-  return `https://www.openstreetmap.org/?mlat=${pinLat.toFixed(6)}&mlon=${pinLon.toFixed(6)}#map=18/${pinLat.toFixed(6)}/${pinLon.toFixed(6)}`;
+  return { longitude: pinLon, latitude: pinLat };
+}
+
+export function candidateMapUrl(
+  candidate: ParkingCandidate,
+  longitude: number,
+  latitude: number,
+): string {
+  const point = candidateMapPoint(candidate, longitude, latitude);
+  const pinLon = point.longitude.toFixed(6);
+  const pinLat = point.latitude.toFixed(6);
+  return `https://www.openstreetmap.org/?mlat=${pinLat}&mlon=${pinLon}#map=18/${pinLat}/${pinLon}`;
 }

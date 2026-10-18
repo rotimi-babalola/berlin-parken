@@ -5,7 +5,9 @@ import {
   tileUrl,
   zoomForRadius,
 } from "@/lib/tiles";
+import { candidateMapPoint } from "@/lib/candidate-map";
 import { useLocale } from "@/lib/i18n";
+import type { ParkingCandidate } from "@/lib/parking";
 import styles from "./signal.module.css";
 
 type Props = {
@@ -13,20 +15,45 @@ type Props = {
   latitude: number;
   radiusMeters: number;
   destination: string;
+  areas: ParkingCandidate[];
 };
 
-// Dumb: static 3×3 tile collage centred on the destination, with a pin
-// and a radius ring. No map library, no interactivity; tiles that fail
-// to load (e.g. offline) hide themselves, leaving the tinted backdrop.
+// Static 3×3 tile collage centred on the destination, with suggested area
+// pins and a radius ring. Failed tiles leave the tinted backdrop visible.
 export function LocationMap({
   longitude,
   latitude,
   radiusMeters,
   destination,
+  areas,
 }: Props) {
   const { t } = useLocale();
-  const zoom = zoomForRadius(radiusMeters);
-  const centre = lonLatToTile(longitude, latitude, zoom);
+  const mapLabel = [
+    t("signal.mapLabel", { destination }),
+    ...areas.map(
+      (area, index) =>
+        `${t(index === 0 ? "signal.firstArea" : "signal.backupArea")}: ${area.streetName}`,
+    ),
+  ].join(". ");
+  const points = areas.map((area) =>
+    candidateMapPoint(area, longitude, latitude),
+  );
+  let zoom = zoomForRadius(radiusMeters);
+  let centre = lonLatToTile(longitude, latitude, zoom);
+  // Keep both pins within the smallest map viewport (280 px high).
+  while (
+    zoom > 0 &&
+    points.some((point) => {
+      const tile = lonLatToTile(point.longitude, point.latitude, zoom);
+      return (
+        Math.abs((tile.x - centre.x) * TILE_SIZE + tile.px - centre.px) > 100 ||
+        Math.abs((tile.y - centre.y) * TILE_SIZE + tile.py - centre.py) > 100
+      );
+    })
+  ) {
+    zoom--;
+    centre = lonLatToTile(longitude, latitude, zoom);
+  }
   // NEXT_PUBLIC_: basemap keys are public by design (referrer-restricted
   // in the CARTO dashboard); without one the tiles show a watermark.
   const key = process.env.NEXT_PUBLIC_CARTO_API_KEY;
@@ -41,11 +68,7 @@ export function LocationMap({
   }
 
   return (
-    <div
-      className={styles.locationMap}
-      role="img"
-      aria-label={t("signal.mapLabel", { destination })}
-    >
+    <div className={styles.locationMap} role="img" aria-label={mapLabel}>
       <div
         className={styles.tileGrid}
         aria-hidden="true"
@@ -74,9 +97,41 @@ export function LocationMap({
         aria-hidden="true"
         style={{ width: ringDiameter, height: ringDiameter }}
       />
+      {areas.map((area, index) => {
+        const tile = lonLatToTile(
+          points[index].longitude,
+          points[index].latitude,
+          zoom,
+        );
+        return (
+          <span
+            key={area.id}
+            className={`${styles.areaPin} ${index === 1 ? styles.backupPin : ""}`}
+            style={{
+              left: `calc(50% + ${(tile.x - centre.x) * TILE_SIZE + tile.px - centre.px}px)`,
+              top: `calc(50% + ${(tile.y - centre.y) * TILE_SIZE + tile.py - centre.py}px)`,
+            }}
+            aria-hidden="true"
+          >
+            {index + 1}
+          </span>
+        );
+      })}
       <span className={styles.mapPin} aria-hidden="true">
         P
       </span>
+      {areas.length > 0 && (
+        <span className={styles.mapLegend} aria-hidden="true">
+          {areas.map((area, index) => (
+            <span key={area.id}>
+              <b className={index === 1 ? styles.backupLegend : ""}>
+                {index + 1}
+              </b>
+              {area.streetName}
+            </span>
+          ))}
+        </span>
+      )}
       <span className={styles.mapCredit} aria-hidden="true">
         {t("signal.mapTiles")}{" "}
         <a
