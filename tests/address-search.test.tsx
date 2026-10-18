@@ -692,7 +692,9 @@ describe("SignalResultsPage", () => {
         .getByRole("link", { name: "Berlin Parken home" })
         .getAttribute("href"),
     ).toBe("/");
-    expect(screen.getByRole("link", { name: "← Home" })).toBeTruthy();
+    expect(
+      screen.getByRole("link", { name: "← Back to Berlin parking search" }),
+    ).toBeTruthy();
     expect(
       screen.getByRole("combobox", { name: "Destination address" }),
     ).toBeTruthy();

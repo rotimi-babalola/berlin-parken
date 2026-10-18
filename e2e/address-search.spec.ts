@@ -87,7 +87,7 @@ test("searches, selects an address, and shows nearby parking", async ({
 
   await page.goto("/");
   await expect(
-    page.getByRole("heading", { name: /Arrive knowing/ }),
+    page.getByRole("heading", { name: "Street parking in Berlin." }),
   ).toBeVisible();
 
   const address = page.getByRole("combobox", { name: "Destination address" });
@@ -107,7 +107,9 @@ test("searches, selects an address, and shows nearby parking", async ({
   await page.getByRole("button", { name: "Check nearby streets" }).click();
 
   await page.waitForURL(/\/results\?/);
-  await expect(page.getByRole("link", { name: "← Home" })).toBeVisible();
+  await expect(
+    page.getByRole("link", { name: "← Back to Berlin parking search" }),
+  ).toBeVisible();
   await expect(page.getByRole("heading", { name: "New search" })).toBeVisible();
   await page.setViewportSize({ width: 375, height: 812 });
   await expect(
