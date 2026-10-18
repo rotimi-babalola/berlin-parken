@@ -3,9 +3,9 @@ import { Suspense } from "react";
 import { SignalResultsPage } from "@/components/signal/SignalResultsPage";
 
 export const metadata: Metadata = {
-  title: "Results — Berlin Parken",
+  title: "Berlin street parking results | Berlin Parken",
   description:
-    "Mapped street parking, paid zones and planned events around your Berlin destination.",
+    "Review mapped street parking, managed parking zones, fees and restrictions near your Berlin destination. No live space availability.",
 };
 
 // useSearchParams() below needs a Suspense boundary for static prerendering.
