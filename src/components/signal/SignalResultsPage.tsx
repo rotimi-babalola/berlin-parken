@@ -2,13 +2,15 @@
 
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import type { SearchReady } from "@/hooks/use-address-search";
+import { useWalkingRoutes } from "@/hooks/use-walking-routes";
 import { useLocale } from "@/lib/i18n";
 import { ensureParkingContext } from "@/lib/parking-context";
-import type { ParkingSummary } from "@/lib/parking";
+import { suggestedAreas, type ParkingSummary } from "@/lib/parking";
 import type { ParkingContext } from "@/lib/parking-context";
 import { parseResultsParams } from "@/lib/results-url";
+import { ArrowLeft } from "@/components/icons";
 import { SignalDetails } from "./SignalDetails";
 import { SignalFooter } from "./SignalFooter";
 import { SignalHeader } from "./SignalHeader";
@@ -35,6 +37,13 @@ export function SignalResultsPage() {
   // state sync inside the fetch effect below.
   const reqKey = `${rawParams.toString()}#${attempt}`;
   const parking = result?.reqKey === reqKey ? result.parking : null;
+  // Suggested areas feed both the map pins and the walk fetch; memoized so the
+  // hook's dependency stays stable across re-renders.
+  const areas = useMemo(
+    () => (parking ? suggestedAreas(parking.candidates ?? []) : []),
+    [parking],
+  );
+  const walking = useWalkingRoutes(areas, parsed.ok ? parsed.value : null);
   const loading = parsed.ok && parking === null;
 
   useEffect(() => {
@@ -113,7 +122,7 @@ export function SignalResultsPage() {
         <main>
           <div className={styles.resultsTop}>
             <Link className={styles.backLink} href="/">
-              {t("results.back")}
+              <ArrowLeft /> {t("results.back")}
             </Link>
           </div>
           <SignalResultsSearch key={rawParams.toString()} />
@@ -153,7 +162,7 @@ export function SignalResultsPage() {
       <main>
         <div className={styles.resultsTop}>
           <Link className={styles.backLink} href="/">
-            {t("results.back")}
+            <ArrowLeft /> {t("results.back")}
           </Link>
           <h1 className={styles.resultsTitle}>{parsed.value.label}</h1>
         </div>
@@ -164,6 +173,8 @@ export function SignalResultsPage() {
         <SignalResultStrip
           search={search}
           parking={parking}
+          areas={areas}
+          walking={walking}
           loading={loading}
           zones={zones}
           events={events}

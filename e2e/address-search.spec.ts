@@ -50,6 +50,20 @@ test.beforeEach(async ({ page }) => {
       json: { suggestions: [suggestion] },
     });
   });
+  // Deterministic pedestrian routes, so results-page tests never call the
+  // live routing service.
+  await page.route("**/api/walk?**", async (route) => {
+    await route.fulfill({
+      json: {
+        distanceMeters: 260,
+        durationMinutes: 4,
+        coordinates: [
+          [13.412, 52.52],
+          [13.413, 52.521],
+        ],
+      },
+    });
+  });
 });
 
 test("searches, selects an address, and shows nearby parking", async ({
@@ -108,7 +122,7 @@ test("searches, selects an address, and shows nearby parking", async ({
 
   await page.waitForURL(/\/results\?/);
   await expect(
-    page.getByRole("link", { name: "← Back to Berlin parking search" }),
+    page.getByRole("link", { name: "Back to Berlin parking search" }),
   ).toBeVisible();
   await expect(page.getByRole("heading", { name: "New search" })).toBeVisible();
   await page.setViewportSize({ width: 375, height: 812 });
@@ -140,6 +154,13 @@ test("searches, selects an address, and shows nearby parking", async ({
   await expect(
     page.getByRole("heading", { name: "Alexanderplatz 1" }),
   ).toBeVisible();
+  const area = page.getByText("First area: Alexanderstraße").locator("..");
+  const numberBox = await area.locator("b").boundingBox();
+  const routeBox = await area.locator("small").nth(1).boundingBox();
+  expect(numberBox).not.toBeNull();
+  expect(routeBox).not.toBeNull();
+  expect(routeBox!.x).toBeGreaterThan(numberBox!.x + numberBox!.width);
+  expect(routeBox!.width).toBeGreaterThan(150);
   expect(requestedDuration).toBe("120");
   expect(Number.isFinite(Date.parse(requestedArrival ?? ""))).toBe(true);
 });

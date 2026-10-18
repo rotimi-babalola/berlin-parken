@@ -335,84 +335,110 @@ describe("SignalResultsPage", () => {
     ],
   };
 
-  function stubParking(payload: Record<string, unknown>) {
+  function stubParking(
+    payload: Record<string, unknown>,
+    walk?: Record<string, unknown>,
+  ) {
     vi.stubGlobal(
       "fetch",
-      vi.fn(async () => ({
-        ok: true,
-        json: async () => ({
-          status: "available",
-          mappedSpaces: 0,
-          usableSpaces: 0,
-          conditionalSpaces: 0,
-          restrictedSpaces: 0,
-          unknownSpaces: 0,
-          featureCount: 0,
-          streets: [],
-          candidates: [],
-          ...payload,
-        }),
+      vi.fn(async (input: RequestInfo | URL) => ({
+        ok: !String(input).startsWith("/api/walk") || Boolean(walk),
+        json: async () =>
+          String(input).startsWith("/api/walk")
+            ? walk
+            : {
+                status: "available",
+                mappedSpaces: 0,
+                usableSpaces: 0,
+                conditionalSpaces: 0,
+                restrictedSpaces: 0,
+                unknownSpaces: 0,
+                featureCount: 0,
+                streets: [],
+                candidates: [],
+                ...payload,
+              },
       })),
     );
   }
 
   it("renders the supply estimate with a level bar and ranked streets", async () => {
     searchParamsValue = validResultsParams();
-    stubParking({
-      status: "partial",
-      mappedSpaces: 850,
-      usableSpaces: 600,
-      conditionalSpaces: 150,
-      restrictedSpaces: 80,
-      unknownSpaces: 20,
-      featureCount: 12,
-      streets: [
-        {
-          name: "Torstraße",
-          mappedSpaces: 420,
-          features: 5,
-          nearestMeters: 120,
-        },
-        {
-          name: "Linienstraße",
-          mappedSpaces: 310,
-          features: 4,
-          nearestMeters: 200,
-        },
-        {
-          name: "Gormannstraße",
-          mappedSpaces: 190,
-          features: 3,
-          nearestMeters: 340,
-        },
-      ],
-      candidates: [
-        {
-          id: "first",
-          streetName: "Torstraße",
-          usability: "usable",
-          mappedSpaces: 20,
-          distanceMeters: 120,
-          geometry,
-        },
-        {
-          id: "same-street",
-          streetName: "Torstraße",
-          usability: "usable",
-          mappedSpaces: 10,
-          distanceMeters: 130,
-          geometry,
-        },
-        {
-          id: "backup",
-          streetName: "Linienstraße",
-          usability: "conditional",
-          mappedSpaces: 15,
-          distanceMeters: 200,
-          geometry,
-        },
-      ],
-    });
+    stubParking(
+      {
+        status: "partial",
+        mappedSpaces: 850,
+        usableSpaces: 600,
+        conditionalSpaces: 150,
+        restrictedSpaces: 80,
+        unknownSpaces: 20,
+        featureCount: 12,
+        streets: [
+          {
+            name: "Torstraße",
+            mappedSpaces: 420,
+            features: 5,
+            nearestMeters: 120,
+          },
+          {
+            name: "Linienstraße",
+            mappedSpaces: 310,
+            features: 4,
+            nearestMeters: 200,
+          },
+          {
+            name: "Gormannstraße",
+            mappedSpaces: 190,
+            features: 3,
+            nearestMeters: 340,
+          },
+        ],
+        candidates: [
+          {
+            id: "first",
+            streetName: "Torstraße",
+            usability: "usable",
+            mappedSpaces: 20,
+            distanceMeters: 120,
+            geometry,
+          },
+          {
+            id: "same-street",
+            streetName: "Torstraße",
+            usability: "usable",
+            mappedSpaces: 10,
+            distanceMeters: 130,
+            geometry,
+          },
+          {
+            id: "backup",
+            streetName: "Linienstraße",
+            usability: "conditional",
+            mappedSpaces: 15,
+            distanceMeters: 200,
+            geometry: {
+              type: "Polygon",
+              coordinates: [
+                [
+                  toEpsg25833(13.416, 52.523),
+                  toEpsg25833(13.4161, 52.523),
+                  toEpsg25833(13.416, 52.5231),
+                  toEpsg25833(13.416, 52.523),
+                ],
+              ],
+            },
+          },
+        ],
+      },
+      {
+        distanceMeters: 260,
+        durationMinutes: 4,
+        coordinates: [
+          [13.415, 52.522],
+          [13.413, 52.521],
+        ],
+      },
+    );
 
     render(<SignalResultsPage />);
 
@@ -424,14 +450,35 @@ describe("SignalResultsPage", () => {
     });
     expect(within(map).getByText("Torstraße")).toBeTruthy();
     expect(within(map).getByText("Linienstraße")).toBeTruthy();
+    const drivingLinks = screen.getAllByRole("link", {
+      name: "Drive to this area",
+    });
+    expect(drivingLinks).toHaveLength(2);
+    const drivingTargets = drivingLinks.map((link) =>
+      new URL((link as HTMLAnchorElement).href).searchParams.get("destination"),
+    );
+    expect(drivingTargets[0]).not.toBe("52.521,13.413");
+    expect(drivingTargets[0]).not.toBe(drivingTargets[1]);
     expect(
-      screen.getAllByRole("link", { name: "Show mapped location ↗" }),
+      screen.getAllByRole("link", {
+        name: "Walk from here to the address",
+      }),
     ).toHaveLength(2);
+    expect(
+      await screen.findAllByText(
+        /Estimated walk to address: 260 m · about 4 min/,
+      ),
+    ).toHaveLength(2);
+    expect(map.querySelectorAll("polyline")).toHaveLength(2);
+    const walkRequests = vi
+      .mocked(fetch)
+      .mock.calls.map(([input]) => String(input))
+      .filter((url) => url.startsWith("/api/walk"));
+    expect(walkRequests).toHaveLength(2);
+    expect(walkRequests[0]).not.toBe(walkRequests[1]);
     expect(screen.queryByText("First area: Linienstraße")).toBeNull();
     expect(screen.getByText(/Partial parking data/)).toBeTruthy();
-    expect(
-      screen.getByText(/20 mapped spaces · 120 m straight line/),
-    ).toBeTruthy();
+    expect(screen.getByText(/20 mapped spaces/)).toBeTruthy();
     expect(
       screen.getByRole("heading", { name: "Alexanderplatz 1" }),
     ).toBeTruthy();
@@ -477,6 +524,7 @@ describe("SignalResultsPage", () => {
             },
           },
         ]}
+        walking={null}
       />,
     );
 
@@ -511,6 +559,9 @@ describe("SignalResultsPage", () => {
 
     render(<SignalResultsPage />);
     await screen.findByText("First area: Torstraße");
+    expect(
+      await screen.findByText(/120 m straight line; walking route unavailable/),
+    ).toBeTruthy();
     expect(screen.queryByText(/Backup area/)).toBeNull();
   });
 
@@ -645,7 +696,7 @@ describe("SignalResultsPage", () => {
         .getAttribute("href"),
     ).toBe("/");
     expect(
-      screen.getByRole("link", { name: "← Back to Berlin parking search" }),
+      screen.getByRole("link", { name: "Back to Berlin parking search" }),
     ).toBeTruthy();
     expect(
       screen.getByRole("combobox", { name: "Destination address" }),

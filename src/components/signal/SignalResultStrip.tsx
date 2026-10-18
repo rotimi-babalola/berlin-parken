@@ -1,20 +1,50 @@
 import type { SearchReady } from "@/hooks/use-address-search";
-import { candidateMapUrl } from "@/lib/candidate-map";
-import { suggestedAreas, type ParkingSummary } from "@/lib/parking";
+import {
+  candidateNavigationUrl,
+  candidateWalkingUrl,
+} from "@/lib/candidate-map";
+import type { ParkingCandidate, ParkingSummary } from "@/lib/parking";
 import type { ParkingContext } from "@/lib/parking-context";
-import { useLocale } from "@/lib/i18n";
+import { useLocale, type I18nKey } from "@/lib/i18n";
 import { formatVisit } from "@/lib/search-time";
+import type { WalkingRoute } from "@/lib/walking-route";
 import { LocationMap } from "./LocationMap";
+import { ArrowDown, ArrowUpRight } from "@/components/icons";
 import styles from "./signal.module.css";
 
 type Props = {
   search: SearchReady | null;
   parking: (ParkingSummary & Partial<ParkingContext>) | null;
+  areas: ParkingCandidate[];
+  walking: Record<string, WalkingRoute | null> | null;
   loading: boolean;
   zones: ParkingContext["zones"];
   events: ParkingContext["events"];
   onRetry: () => void;
 };
+
+type Translate = (
+  key: I18nKey,
+  vars?: Record<string, string | number>,
+) => string;
+
+// The three walk states: a resolved route, still fetching, or routing failed.
+// Only a resolved route may quote a pedestrian distance/time.
+function walkLabel(
+  t: Translate,
+  area: ParkingCandidate,
+  route: WalkingRoute | null | undefined,
+  loading: boolean,
+): string {
+  if (route)
+    return t("signal.walkRoute", {
+      distance: route.distanceMeters,
+      minutes: route.durationMinutes,
+    });
+  return t(loading ? "signal.walkLoading" : "signal.walkFallback", {
+    distance: area.distanceMeters,
+  });
+}
 
 function formatRadius(meters: number): string {
   return meters < 1000 ? `${meters} m` : "1 km";
@@ -25,6 +55,8 @@ function formatRadius(meters: number): string {
 export function SignalResultStrip({
   search,
   parking,
+  areas,
+  walking,
   loading,
   zones,
   events,
@@ -79,7 +111,6 @@ export function SignalResultStrip({
     );
   }
 
-  const areas = suggestedAreas(parking.candidates);
   const zone = zones.items[0];
   const event = events.items[0];
   const zoneLabel = zone
@@ -88,65 +119,83 @@ export function SignalResultStrip({
 
   return (
     <section className={styles.results} aria-live="polite">
-      <div className={styles.metric}>
-        <span>{t("signal.metricEyebrow", { radius })}</span>
-        <strong>{parking.mappedSpaces.toLocaleString(locale)}</strong>
-        <p>
-          {t("signal.metricCaption", {
-            destination: search.destination.label,
-          })}
-        </p>
-        <p>
-          {formatVisit(t, search.arrivalMs, search.durationMinutes, locale)}
-        </p>
-        <small>{t("signal.metricNote")}</small>
-        {parking.status === "partial" && (
-          <small role="status">{t("results.partialNotice")}</small>
-        )}
-      </div>
-      <div className={styles.mapCell}>
-        <LocationMap
-          longitude={search.destination.longitude}
-          latitude={search.destination.latitude}
-          radiusMeters={search.radiusMeters}
-          destination={search.destination.label}
-          areas={areas}
-        />
+      <div className={styles.overview}>
+        <div className={styles.metric}>
+          <span>{t("signal.metricEyebrow", { radius })}</span>
+          <strong>{parking.mappedSpaces.toLocaleString(locale)}</strong>
+          <p>
+            {t("signal.metricCaption", {
+              destination: search.destination.label,
+            })}
+          </p>
+          <p>
+            {formatVisit(t, search.arrivalMs, search.durationMinutes, locale)}
+          </p>
+          <small>{t("signal.metricNote")}</small>
+          {parking.status === "partial" && (
+            <small role="status">{t("results.partialNotice")}</small>
+          )}
+        </div>
+        <div className={styles.mapCell}>
+          <LocationMap
+            longitude={search.destination.longitude}
+            latitude={search.destination.latitude}
+            radiusMeters={search.radiusMeters}
+            destination={search.destination.label}
+            areas={areas}
+            walking={walking}
+          />
+        </div>
       </div>
       <div className={styles.checklist}>
         <span>{t("signal.checklistTitle")}</span>
-        {areas.map((area, index) => (
-          <div key={area.id}>
-            <b>{index === 0 ? "01" : "02"}</b>
-            <strong>
-              {t(index === 0 ? "signal.firstArea" : "signal.backupArea")}:{" "}
-              {area.streetName}
-            </strong>
-            <small>
-              {t("signal.areaFactors", {
-                suitability: t(
-                  area.usability === "usable"
-                    ? "signal.unrestricted"
-                    : "signal.conditional",
-                ),
-                spaces: area.mappedSpaces.toLocaleString(locale),
-                distance: area.distanceMeters,
-              })}
-            </small>
-            <a
-              className={styles.areaLink}
-              href={candidateMapUrl(
-                area,
-                search.destination.longitude,
-                search.destination.latitude,
-              )}
-              target="_blank"
-              rel="noopener noreferrer"
-            >
-              {t("signal.showAreaOnMap")}
-            </a>
-          </div>
-        ))}
+        {areas.map((area, index) => {
+          const route = walking?.[area.id];
+          return (
+            <div className={styles.areaCard} key={area.id}>
+              <b>{index === 0 ? "01" : "02"}</b>
+              <strong>
+                {t(index === 0 ? "signal.firstArea" : "signal.backupArea")}:{" "}
+                {area.streetName}
+              </strong>
+              <small>
+                {t("signal.areaFactors", {
+                  suitability: t(
+                    area.usability === "usable"
+                      ? "signal.unrestricted"
+                      : "signal.conditional",
+                  ),
+                  spaces: area.mappedSpaces.toLocaleString(locale),
+                })}
+              </small>
+              <small>{walkLabel(t, area, route, walking === null)}</small>
+              <a
+                className={styles.areaLink}
+                href={candidateNavigationUrl(
+                  area,
+                  search.destination.longitude,
+                  search.destination.latitude,
+                )}
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                {t("signal.navigateToArea")} <ArrowUpRight />
+              </a>
+              <a
+                className={styles.areaLink}
+                href={candidateWalkingUrl(
+                  area,
+                  search.destination.longitude,
+                  search.destination.latitude,
+                )}
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                {t("signal.walkToAddress")} <ArrowUpRight />
+              </a>
+            </div>
+          );
+        })}
         {!areas.length && (
           <div>
             <b>01</b>
@@ -178,7 +227,7 @@ export function SignalResultStrip({
         </div>
         <small>{t("signal.rankingNote")}</small>
         <a className={styles.detailsJump} href="#explore-title">
-          {t("signal.detailsLink")}
+          {t("signal.detailsLink")} <ArrowDown />
         </a>
       </div>
     </section>
