@@ -19,8 +19,34 @@ type Props = {
   radiusMeters: number;
   destination: string;
   areas: ParkingCandidate[];
-  walking?: Record<string, WalkingRoute | null> | null;
+  walking: Record<string, WalkingRoute | null> | null;
 };
+
+type MapPoint = { longitude: number; latitude: number };
+
+// Shrink the zoom until every point (pins and walk paths) sits within ±100 px
+// of the centre, so the smallest map viewport keeps them on screen.
+function fitZoom(
+  fromZoom: number,
+  longitude: number,
+  latitude: number,
+  points: MapPoint[],
+): number {
+  let zoom = fromZoom;
+  while (zoom > 0) {
+    const centre = lonLatToTile(longitude, latitude, zoom);
+    const outOfBox = points.some((point) => {
+      const tile = lonLatToTile(point.longitude, point.latitude, zoom);
+      return (
+        Math.abs((tile.x - centre.x) * TILE_SIZE + tile.px - centre.px) > 100 ||
+        Math.abs((tile.y - centre.y) * TILE_SIZE + tile.py - centre.py) > 100
+      );
+    });
+    if (!outOfBox) break;
+    zoom--;
+  }
+  return zoom;
+}
 
 // Tile collage centred on the destination (grown to fill the map box), with
 // suggested area pins and a radius ring. Failed tiles leave the tinted
@@ -63,22 +89,11 @@ export function LocationMap({
       latitude,
     })),
   );
-  let zoom = zoomForRadius(radiusMeters);
-  let centre = lonLatToTile(longitude, latitude, zoom);
-  // Keep both pins within the smallest map viewport (280 px high).
-  while (
-    zoom > 0 &&
-    [...points, ...routePoints].some((point) => {
-      const tile = lonLatToTile(point.longitude, point.latitude, zoom);
-      return (
-        Math.abs((tile.x - centre.x) * TILE_SIZE + tile.px - centre.px) > 100 ||
-        Math.abs((tile.y - centre.y) * TILE_SIZE + tile.py - centre.py) > 100
-      );
-    })
-  ) {
-    zoom--;
-    centre = lonLatToTile(longitude, latitude, zoom);
-  }
+  const zoom = fitZoom(zoomForRadius(radiusMeters), longitude, latitude, [
+    ...points,
+    ...routePoints,
+  ]);
+  const centre = lonLatToTile(longitude, latitude, zoom);
   // NEXT_PUBLIC_: basemap keys are public by design (referrer-restricted
   // in the CARTO dashboard); without one the tiles show a watermark.
   const key = process.env.NEXT_PUBLIC_CARTO_API_KEY;

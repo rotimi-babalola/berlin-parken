@@ -50,6 +50,20 @@ test.beforeEach(async ({ page }) => {
       json: { suggestions: [suggestion] },
     });
   });
+  // Deterministic pedestrian routes, so results-page tests never call the
+  // live routing service.
+  await page.route("**/api/walk?**", async (route) => {
+    await route.fulfill({
+      json: {
+        distanceMeters: 260,
+        durationMinutes: 4,
+        coordinates: [
+          [13.412, 52.52],
+          [13.413, 52.521],
+        ],
+      },
+    });
+  });
 });
 
 test("searches, selects an address, and shows nearby parking", async ({

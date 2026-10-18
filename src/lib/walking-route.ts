@@ -1,3 +1,4 @@
+import { toEpsg25833 } from "./parking.ts";
 import { isInBerlin } from "./results-url.ts";
 
 export type WalkingRoute = {
@@ -6,6 +7,17 @@ export type WalkingRoute = {
   coordinates: [number, number][];
 };
 
+// Metropolitan metres between two points, in the projection the rest of the
+// app measures with, so the guard below can't drift from candidate distances.
+function metresApart(
+  from: { latitude: number; longitude: number },
+  to: { latitude: number; longitude: number },
+): number {
+  const [fromEast, fromNorth] = toEpsg25833(from.longitude, from.latitude);
+  const [toEast, toNorth] = toEpsg25833(to.longitude, to.latitude);
+  return Math.hypot(toEast - fromEast, toNorth - fromNorth);
+}
+
 export async function getWalkingRoute(
   from: { latitude: number; longitude: number },
   to: { latitude: number; longitude: number },
@@ -13,10 +25,7 @@ export async function getWalkingRoute(
   if (
     !isInBerlin(from.latitude, from.longitude) ||
     !isInBerlin(to.latitude, to.longitude) ||
-    Math.hypot(
-      (from.latitude - to.latitude) * 111_000,
-      (from.longitude - to.longitude) * 68_000,
-    ) > 2000
+    metresApart(from, to) > 2000
   ) {
     throw new RangeError("Invalid walking route coordinates");
   }

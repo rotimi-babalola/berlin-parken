@@ -524,6 +524,7 @@ describe("SignalResultsPage", () => {
             },
           },
         ]}
+        walking={null}
       />,
     );
 

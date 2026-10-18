@@ -3,9 +3,9 @@ import {
   candidateNavigationUrl,
   candidateWalkingUrl,
 } from "@/lib/candidate-map";
-import { suggestedAreas, type ParkingSummary } from "@/lib/parking";
+import type { ParkingCandidate, ParkingSummary } from "@/lib/parking";
 import type { ParkingContext } from "@/lib/parking-context";
-import { useLocale } from "@/lib/i18n";
+import { useLocale, type I18nKey } from "@/lib/i18n";
 import { formatVisit } from "@/lib/search-time";
 import type { WalkingRoute } from "@/lib/walking-route";
 import { LocationMap } from "./LocationMap";
@@ -15,12 +15,36 @@ import styles from "./signal.module.css";
 type Props = {
   search: SearchReady | null;
   parking: (ParkingSummary & Partial<ParkingContext>) | null;
+  areas: ParkingCandidate[];
   walking: Record<string, WalkingRoute | null> | null;
   loading: boolean;
   zones: ParkingContext["zones"];
   events: ParkingContext["events"];
   onRetry: () => void;
 };
+
+type Translate = (
+  key: I18nKey,
+  vars?: Record<string, string | number>,
+) => string;
+
+// The three walk states: a resolved route, still fetching, or routing failed.
+// Only a resolved route may quote a pedestrian distance/time.
+function walkLabel(
+  t: Translate,
+  area: ParkingCandidate,
+  route: WalkingRoute | null | undefined,
+  loading: boolean,
+): string {
+  if (route)
+    return t("signal.walkRoute", {
+      distance: route.distanceMeters,
+      minutes: route.durationMinutes,
+    });
+  return t(loading ? "signal.walkLoading" : "signal.walkFallback", {
+    distance: area.distanceMeters,
+  });
+}
 
 function formatRadius(meters: number): string {
   return meters < 1000 ? `${meters} m` : "1 km";
@@ -31,6 +55,7 @@ function formatRadius(meters: number): string {
 export function SignalResultStrip({
   search,
   parking,
+  areas,
   walking,
   loading,
   zones,
@@ -86,7 +111,6 @@ export function SignalResultStrip({
     );
   }
 
-  const areas = suggestedAreas(parking.candidates);
   const zone = zones.items[0];
   const event = events.items[0];
   const zoneLabel = zone
@@ -144,21 +168,7 @@ export function SignalResultStrip({
                   spaces: area.mappedSpaces.toLocaleString(locale),
                 })}
               </small>
-              <small>
-                {route
-                  ? t("signal.walkRoute", {
-                      distance: route.distanceMeters,
-                      minutes: route.durationMinutes,
-                    })
-                  : t(
-                      walking === null
-                        ? "signal.walkLoading"
-                        : "signal.walkFallback",
-                      {
-                        distance: area.distanceMeters,
-                      },
-                    )}
-              </small>
+              <small>{walkLabel(t, area, route, walking === null)}</small>
               <a
                 className={styles.areaLink}
                 href={candidateNavigationUrl(

@@ -62,17 +62,6 @@ export function candidateMapPoint(
   return { longitude: pinLon, latitude: pinLat };
 }
 
-export function candidateMapUrl(
-  candidate: ParkingCandidate,
-  longitude: number,
-  latitude: number,
-): string {
-  const point = candidateMapPoint(candidate, longitude, latitude);
-  const pinLon = point.longitude.toFixed(6);
-  const pinLat = point.latitude.toFixed(6);
-  return `https://www.openstreetmap.org/?mlat=${pinLat}&mlon=${pinLon}#map=18/${pinLat}/${pinLon}`;
-}
-
 export function candidateNavigationUrl(
   candidate: ParkingCandidate,
   longitude: number,

@@ -16,7 +16,8 @@ export async function GET(request: Request) {
     return Response.json({ error: "Missing coordinates" }, { status: 400 });
   try {
     return Response.json(await getWalkingRoute(from, to), {
-      headers: { "Cache-Control": "no-store" },
+      // Routes are deterministic for a coordinate pair, so cache them.
+      headers: { "Cache-Control": "public, max-age=3600, s-maxage=86400" },
     });
   } catch (error) {
     return Response.json(
@@ -26,7 +27,10 @@ export async function GET(request: Request) {
             ? "Invalid coordinates"
             : "Walking route unavailable",
       },
-      { status: error instanceof RangeError ? 400 : 503 },
+      {
+        status: error instanceof RangeError ? 400 : 503,
+        headers: { "Cache-Control": "no-store" },
+      },
     );
   }
 }
