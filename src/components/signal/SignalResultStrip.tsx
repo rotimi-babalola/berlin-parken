@@ -1,5 +1,6 @@
 import type { SearchReady } from "@/hooks/use-address-search";
-import type { ParkingSummary } from "@/lib/parking";
+import { candidateMapUrl } from "@/lib/candidate-map";
+import { suggestedAreas, type ParkingSummary } from "@/lib/parking";
 import type { ParkingContext } from "@/lib/parking-context";
 import { useLocale } from "@/lib/i18n";
 import { formatVisit } from "@/lib/search-time";
@@ -78,7 +79,7 @@ export function SignalResultStrip({
     );
   }
 
-  const street = parking.streets[0];
+  const areas = suggestedAreas(parking.candidates);
   const zone = zones.items[0];
   const event = events.items[0];
   const zoneLabel = zone
@@ -99,6 +100,9 @@ export function SignalResultStrip({
           {formatVisit(t, search.arrivalMs, search.durationMinutes, locale)}
         </p>
         <small>{t("signal.metricNote")}</small>
+        {parking.status === "partial" && (
+          <small role="status">{t("results.partialNotice")}</small>
+        )}
       </div>
       <div className={styles.mapCell}>
         <LocationMap
@@ -106,22 +110,65 @@ export function SignalResultStrip({
           latitude={search.destination.latitude}
           radiusMeters={search.radiusMeters}
           destination={search.destination.label}
+          areas={areas}
         />
       </div>
       <div className={styles.checklist}>
         <span>{t("signal.checklistTitle")}</span>
+        {areas.map((area, index) => (
+          <div key={area.id}>
+            <b>{index === 0 ? "01" : "02"}</b>
+            <strong>
+              {t(index === 0 ? "signal.firstArea" : "signal.backupArea")}:{" "}
+              {area.streetName}
+            </strong>
+            <small>
+              {t("signal.areaFactors", {
+                suitability: t(
+                  area.usability === "usable"
+                    ? "signal.unrestricted"
+                    : "signal.conditional",
+                ),
+                spaces: area.mappedSpaces.toLocaleString(locale),
+                distance: area.distanceMeters,
+              })}
+            </small>
+            <a
+              className={styles.areaLink}
+              href={candidateMapUrl(
+                area,
+                search.destination.longitude,
+                search.destination.latitude,
+              )}
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              {t("signal.showAreaOnMap")}
+            </a>
+          </div>
+        ))}
+        {!areas.length && (
+          <div>
+            <b>01</b>
+            <strong>{t("signal.firstArea")}</strong>
+            <small>
+              {t(
+                parking.candidates.length
+                  ? "signal.unnamedArea"
+                  : parking.status === "partial"
+                    ? "signal.noAreaPartial"
+                    : "signal.noArea",
+              )}
+            </small>
+          </div>
+        )}
         <div>
-          <b>01</b>
-          <strong>{street ? street.name : t("signal.noStreet")}</strong>
-          <small>{t("signal.checkStreet")}</small>
-        </div>
-        <div>
-          <b>02</b>
+          <b>{areas.length === 2 ? "03" : "02"}</b>
           <strong>{t("signal.checkZone")}</strong>
           <small>{zoneLabel}</small>
         </div>
         <div>
-          <b>03</b>
+          <b>{areas.length === 2 ? "04" : "03"}</b>
           <strong>{t("signal.checkEvent")}</strong>
           <small>
             {event
@@ -129,6 +176,7 @@ export function SignalResultStrip({
               : t("signal.noEvent")}
           </small>
         </div>
+        <small>{t("signal.rankingNote")}</small>
         <a className={styles.detailsJump} href="#explore-title">
           {t("signal.detailsLink")}
         </a>

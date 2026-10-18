@@ -1,4 +1,10 @@
 import { expect, test } from "@playwright/test";
+import {
+  toEpsg25833,
+  type ParkingCandidate,
+  type ParkingSummary,
+} from "../src/lib/parking";
+import type { ParkingContext } from "../src/lib/parking-context";
 
 const suggestion = {
   id: "berlin-alexanderplatz-1",
@@ -7,6 +13,36 @@ const suggestion = {
   latitude: 52.521,
   longitude: 13.413,
 };
+
+function candidate(
+  id: string,
+  streetName: string,
+  distanceMeters: number,
+): ParkingCandidate {
+  const [east, originNorth] = toEpsg25833(
+    suggestion.longitude,
+    suggestion.latitude,
+  );
+  const north = originNorth + distanceMeters;
+  return {
+    id,
+    streetName,
+    usability: "usable",
+    mappedSpaces: 10,
+    distanceMeters,
+    geometry: {
+      type: "Polygon",
+      coordinates: [
+        [
+          [east, north],
+          [east + 5, north],
+          [east + 5, north + 5],
+          [east, north],
+        ],
+      ],
+    },
+  };
+}
 
 test.beforeEach(async ({ page }) => {
   await page.route("**/api/geocode?**", async (route) => {
@@ -36,8 +72,16 @@ test("searches, selects an address, and shows nearby parking", async ({
         restrictedSpaces: 4,
         unknownSpaces: 0,
         featureCount: 3,
-        streets: [{ name: "Alexanderstraße", mappedSpaces: 42, features: 3 }],
-      },
+        streets: [
+          {
+            name: "Alexanderstraße",
+            mappedSpaces: 42,
+            features: 3,
+            nearestMeters: 120,
+          },
+        ],
+        candidates: [candidate("alexander", "Alexanderstraße", 120)],
+      } satisfies ParkingSummary,
     });
   });
 
@@ -72,9 +116,7 @@ test("searches, selects an address, and shows nearby parking", async ({
   expect(
     await page.evaluate(() => document.documentElement.scrollWidth),
   ).toBeLessThanOrEqual(375);
-  const strip = page
-    .locator("section")
-    .filter({ hasText: "WHAT YOU CAN CHECK" });
+  const strip = page.locator("section").filter({ hasText: "MAPPED SPACES" });
   await expect(strip).toContainText("Alexanderplatz 1");
   await expect(strip).toContainText("42");
   await expect(strip).toContainText("Alexanderstraße");
@@ -121,9 +163,28 @@ test("shows the Bescheid report, side rail, and event carousel", async ({
         unknownSpaces: 20,
         featureCount: 12,
         streets: [
-          { name: "Torstraße", mappedSpaces: 420, features: 5 },
-          { name: "Linienstraße", mappedSpaces: 310, features: 4 },
-          { name: "Gormannstraße", mappedSpaces: 190, features: 3 },
+          {
+            name: "Torstraße",
+            mappedSpaces: 420,
+            features: 5,
+            nearestMeters: 100,
+          },
+          {
+            name: "Linienstraße",
+            mappedSpaces: 310,
+            features: 4,
+            nearestMeters: 200,
+          },
+          {
+            name: "Gormannstraße",
+            mappedSpaces: 190,
+            features: 3,
+            nearestMeters: 300,
+          },
+        ],
+        candidates: [
+          candidate("tor", "Torstraße", 100),
+          candidate("linien", "Linienstraße", 200),
         ],
         zones: {
           source: { status: "available", fetchedAt: new Date().toISOString() },
@@ -142,7 +203,7 @@ test("shows the Bescheid report, side rail, and event carousel", async ({
           source: { status: "available", fetchedAt: new Date().toISOString() },
           items: events,
         },
-      },
+      } satisfies ParkingSummary & ParkingContext,
     });
   });
 
@@ -153,9 +214,7 @@ test("shows the Bescheid report, side rail, and event carousel", async ({
   await page.getByRole("button", { name: "Check nearby streets" }).click();
 
   await page.waitForURL(/\/results\?/);
-  const strip = page
-    .locator("section")
-    .filter({ hasText: "WHAT YOU CAN CHECK" });
+  const strip = page.locator("section").filter({ hasText: "MAPPED SPACES" });
   await expect(strip).toContainText("850");
   await expect(strip).toContainText("Torstraße");
 

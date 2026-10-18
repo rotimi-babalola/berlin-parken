@@ -5,6 +5,7 @@ import {
   getNearbyParking,
   parseMaxStayMinutes,
   parseValidityWindows,
+  suggestedAreas,
   toEpsg25833,
 } from "../src/lib/parking.ts";
 
@@ -385,6 +386,28 @@ test("never exposes restricted or unknown features as candidates", async (t) => 
   assert.equal(result.unknownSpaces, 9);
 });
 
+test("excludes a timed outside segment when its loading restriction conflicts with the stay", async (t) => {
+  const timed = feature(
+    "timed",
+    0,
+    0,
+    12,
+    "Parken mit zeitlicher Beschränkung",
+    "Timed Street",
+  );
+  Object.assign(timed.properties, {
+    geltungszeit_ladezone: "Mo-Fr 07:00-15:00 Uhr",
+    ladezone_einschraenkungen: "Ladezone",
+  });
+  mockOutsideFetch(t, async () => collection([timed]));
+  const result = await getNearbyParking(13.405, 52.52, 100, {
+    arrivalMs: monday("10:00:00"),
+    durationMinutes: 60,
+  });
+  assert.equal(result.restrictedSpaces, 12);
+  assert.deepEqual(result.candidates, []);
+});
+
 test("keeps every inside rule field on an eligible candidate", async (t) => {
   mockInsideFetch(t, {
     beschraenkung: "Haltverbot",
@@ -459,7 +482,50 @@ test("derives a stable candidate id from geometry when the source omits one", as
   assert.equal(first.candidates[0].id, shifted.candidates[0].id);
 });
 
-test("caps candidates at the nearest eligible segments", async (t) => {
+test("ranks eligible segments by stay suitability, mapped supply and distance", async (t) => {
+  mockOutsideFetch(t, async () =>
+    collection([
+      feature("near-small", 0, 0, 1, "Parken (ohne Beschränkungen)", "Near"),
+      feature("far-large", 70, 0, 12, "Parken (ohne Beschränkungen)", "Far"),
+      feature(
+        "near-large",
+        20,
+        0,
+        12,
+        "Parken (ohne Beschränkungen)",
+        "Middle",
+      ),
+      feature(
+        "conditional",
+        0,
+        0,
+        100,
+        "Parken mit zeitlicher Beschränkung",
+        "Timed",
+      ),
+    ]),
+  );
+
+  const result = await getNearbyParking(13.405, 52.52, 100);
+  assert.deepEqual(
+    result.candidates.map(({ id }) => id),
+    ["near-large", "far-large", "near-small", "conditional"],
+  );
+  assert.deepEqual(
+    suggestedAreas([
+      result.candidates[0],
+      { ...result.candidates[0], id: "same-street" },
+      result.candidates[1],
+    ]).map(({ id }) => id),
+    ["near-large", "far-large"],
+  );
+  assert.deepEqual(
+    suggestedAreas([result.candidates[0]]).map(({ id }) => id),
+    ["near-large"],
+  );
+});
+
+test("caps candidates at the highest-ranked eligible segments", async (t) => {
   mockOutsideFetch(t, async () =>
     collection(
       Array.from({ length: 30 }, (_, index) =>
@@ -479,6 +545,37 @@ test("caps candidates at the nearest eligible segments", async (t) => {
   const result = await getNearbyParking(13.405, 52.52, 100);
   assert.equal(result.candidates.length, 25);
   assert.equal(result.candidates[0].id, "c0");
+});
+
+test("retains a distinct backup street when the best 25 segments share a street", async (t) => {
+  mockOutsideFetch(t, async () =>
+    collection([
+      ...Array.from({ length: 25 }, (_, index) =>
+        feature(
+          `same-${index}`,
+          10 + index,
+          0,
+          10,
+          "Parken (ohne Beschränkungen)",
+          "Same Street",
+        ),
+      ),
+      feature(
+        "backup",
+        80,
+        0,
+        1,
+        "Parken (ohne Beschränkungen)",
+        "Other Street",
+      ),
+    ]),
+  );
+  const result = await getNearbyParking(13.405, 52.52, 100);
+  assert.equal(result.candidates.length, 25);
+  assert.deepEqual(
+    suggestedAreas(result.candidates).map(({ id }) => id),
+    ["same-0", "backup"],
+  );
 });
 
 test("reports an empty candidate list when every mapped feature is ineligible", async (t) => {
@@ -848,6 +945,7 @@ test("classifies a time-limited ban against the full stay: inactive means usable
   assert.equal(overlapping.restrictedSpaces, 5);
   assert.equal(overlapping.usableSpaces, 0);
   assert.deepEqual(overlapping.streets, []);
+  assert.deepEqual(overlapping.candidates, []);
 });
 
 test("handles stays crossing midnight against overnight and next-day windows", async (t) => {
