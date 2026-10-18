@@ -1,5 +1,8 @@
 import type { SearchReady } from "@/hooks/use-address-search";
-import { candidateMapUrl } from "@/lib/candidate-map";
+import {
+  candidateNavigationUrl,
+  candidateWalkingUrl,
+} from "@/lib/candidate-map";
 import { suggestedAreas, type ParkingSummary } from "@/lib/parking";
 import type { ParkingContext } from "@/lib/parking-context";
 import { useLocale } from "@/lib/i18n";
@@ -135,7 +138,7 @@ export function SignalResultStrip({
             </small>
             <a
               className={styles.areaLink}
-              href={candidateMapUrl(
+              href={candidateNavigationUrl(
                 area,
                 search.destination.longitude,
                 search.destination.latitude,
@@ -143,7 +146,19 @@ export function SignalResultStrip({
               target="_blank"
               rel="noopener noreferrer"
             >
-              {t("signal.showAreaOnMap")}
+              {t("signal.navigateToArea")}
+            </a>
+            <a
+              className={styles.areaLink}
+              href={candidateWalkingUrl(
+                area,
+                search.destination.longitude,
+                search.destination.latitude,
+              )}
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              {t("signal.walkToAddress")}
             </a>
           </div>
         ))}

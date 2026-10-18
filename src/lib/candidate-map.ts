@@ -72,3 +72,31 @@ export function candidateMapUrl(
   const pinLat = point.latitude.toFixed(6);
   return `https://www.openstreetmap.org/?mlat=${pinLat}&mlon=${pinLon}#map=18/${pinLat}/${pinLon}`;
 }
+
+export function candidateNavigationUrl(
+  candidate: ParkingCandidate,
+  longitude: number,
+  latitude: number,
+): string {
+  const point = candidateMapPoint(candidate, longitude, latitude);
+  const url = new URL("https://www.google.com/maps/dir/");
+  url.searchParams.set("api", "1");
+  url.searchParams.set("destination", `${point.latitude},${point.longitude}`);
+  url.searchParams.set("travelmode", "driving");
+  return url.toString();
+}
+
+export function candidateWalkingUrl(
+  candidate: ParkingCandidate,
+  longitude: number,
+  latitude: number,
+): string {
+  const point = candidateMapPoint(candidate, longitude, latitude);
+  const url = new URL("https://www.openstreetmap.org/directions");
+  url.searchParams.set("engine", "fossgis_osrm_foot");
+  url.searchParams.set(
+    "route",
+    `${point.latitude},${point.longitude};${latitude},${longitude}`,
+  );
+  return url.toString();
+}

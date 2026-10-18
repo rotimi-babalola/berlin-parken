@@ -425,7 +425,12 @@ describe("SignalResultsPage", () => {
     expect(within(map).getByText("Torstraße")).toBeTruthy();
     expect(within(map).getByText("Linienstraße")).toBeTruthy();
     expect(
-      screen.getAllByRole("link", { name: "Show mapped location ↗" }),
+      screen.getAllByRole("link", { name: "Drive to this area ↗" }),
+    ).toHaveLength(2);
+    expect(
+      screen.getAllByRole("link", {
+        name: "Walk from here to the address ↗",
+      }),
     ).toHaveLength(2);
     expect(screen.queryByText("First area: Linienstraße")).toBeNull();
     expect(screen.getByText(/Partial parking data/)).toBeTruthy();
