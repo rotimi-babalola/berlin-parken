@@ -4,9 +4,9 @@ import { Analytics } from "@vercel/analytics/next";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "Berlin Parken — Know the streets before you arrive",
+  title: "Berlin street parking, zones & fees | Berlin Parken",
   description:
-    "Explore mapped street parking, paid zones and planned events around a Berlin destination.",
+    "Check mapped street parking near a Berlin address, managed parking zones, fees and restrictions. No live space availability.",
 };
 
 export default function RootLayout({

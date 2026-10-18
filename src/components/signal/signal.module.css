@@ -873,6 +873,7 @@
   }
   .searchLine button {
     width: 100%;
+    white-space: normal;
   }
   .intro h1 {
     font-size: clamp(36px, 10vw, 52px);
