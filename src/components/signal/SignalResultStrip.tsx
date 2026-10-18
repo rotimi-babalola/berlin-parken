@@ -7,12 +7,14 @@ import { suggestedAreas, type ParkingSummary } from "@/lib/parking";
 import type { ParkingContext } from "@/lib/parking-context";
 import { useLocale } from "@/lib/i18n";
 import { formatVisit } from "@/lib/search-time";
+import type { WalkingRoute } from "@/lib/walking-route";
 import { LocationMap } from "./LocationMap";
 import styles from "./signal.module.css";
 
 type Props = {
   search: SearchReady | null;
   parking: (ParkingSummary & Partial<ParkingContext>) | null;
+  walking: Record<string, WalkingRoute | null> | null;
   loading: boolean;
   zones: ParkingContext["zones"];
   events: ParkingContext["events"];
@@ -28,6 +30,7 @@ function formatRadius(meters: number): string {
 export function SignalResultStrip({
   search,
   parking,
+  walking,
   loading,
   zones,
   events,
@@ -114,54 +117,72 @@ export function SignalResultStrip({
           radiusMeters={search.radiusMeters}
           destination={search.destination.label}
           areas={areas}
+          walking={walking}
         />
       </div>
       <div className={styles.checklist}>
         <span>{t("signal.checklistTitle")}</span>
-        {areas.map((area, index) => (
-          <div key={area.id}>
-            <b>{index === 0 ? "01" : "02"}</b>
-            <strong>
-              {t(index === 0 ? "signal.firstArea" : "signal.backupArea")}:{" "}
-              {area.streetName}
-            </strong>
-            <small>
-              {t("signal.areaFactors", {
-                suitability: t(
-                  area.usability === "usable"
-                    ? "signal.unrestricted"
-                    : "signal.conditional",
-                ),
-                spaces: area.mappedSpaces.toLocaleString(locale),
-                distance: area.distanceMeters,
-              })}
-            </small>
-            <a
-              className={styles.areaLink}
-              href={candidateNavigationUrl(
-                area,
-                search.destination.longitude,
-                search.destination.latitude,
-              )}
-              target="_blank"
-              rel="noopener noreferrer"
-            >
-              {t("signal.navigateToArea")}
-            </a>
-            <a
-              className={styles.areaLink}
-              href={candidateWalkingUrl(
-                area,
-                search.destination.longitude,
-                search.destination.latitude,
-              )}
-              target="_blank"
-              rel="noopener noreferrer"
-            >
-              {t("signal.walkToAddress")}
-            </a>
-          </div>
-        ))}
+        {areas.map((area, index) => {
+          const route = walking?.[area.id];
+          return (
+            <div key={area.id}>
+              <b>{index === 0 ? "01" : "02"}</b>
+              <strong>
+                {t(index === 0 ? "signal.firstArea" : "signal.backupArea")}:{" "}
+                {area.streetName}
+              </strong>
+              <small>
+                {t("signal.areaFactors", {
+                  suitability: t(
+                    area.usability === "usable"
+                      ? "signal.unrestricted"
+                      : "signal.conditional",
+                  ),
+                  spaces: area.mappedSpaces.toLocaleString(locale),
+                })}
+              </small>
+              <small>
+                {route
+                  ? t("signal.walkRoute", {
+                      distance: route.distanceMeters,
+                      minutes: route.durationMinutes,
+                    })
+                  : t(
+                      walking === null
+                        ? "signal.walkLoading"
+                        : "signal.walkFallback",
+                      {
+                        distance: area.distanceMeters,
+                      },
+                    )}
+              </small>
+              <a
+                className={styles.areaLink}
+                href={candidateNavigationUrl(
+                  area,
+                  search.destination.longitude,
+                  search.destination.latitude,
+                )}
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                {t("signal.navigateToArea")}
+              </a>
+              <a
+                className={styles.areaLink}
+                href={candidateWalkingUrl(
+                  area,
+                  search.destination.longitude,
+                  search.destination.latitude,
+                )}
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                {t("signal.walkToAddress")}
+              </a>
+            </div>
+          );
+        })}
         {!areas.length && (
           <div>
             <b>01</b>

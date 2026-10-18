@@ -8,6 +8,7 @@ import {
 import { candidateMapPoint } from "@/lib/candidate-map";
 import { useLocale } from "@/lib/i18n";
 import type { ParkingCandidate } from "@/lib/parking";
+import type { WalkingRoute } from "@/lib/walking-route";
 import styles from "./signal.module.css";
 
 type Props = {
@@ -16,6 +17,7 @@ type Props = {
   radiusMeters: number;
   destination: string;
   areas: ParkingCandidate[];
+  walking?: Record<string, WalkingRoute | null> | null;
 };
 
 // Static 3×3 tile collage centred on the destination, with suggested area
@@ -26,6 +28,7 @@ export function LocationMap({
   radiusMeters,
   destination,
   areas,
+  walking,
 }: Props) {
   const { t } = useLocale();
   const mapLabel = [
@@ -38,12 +41,18 @@ export function LocationMap({
   const points = areas.map((area) =>
     candidateMapPoint(area, longitude, latitude),
   );
+  const routePoints = areas.flatMap((area) =>
+    (walking?.[area.id]?.coordinates ?? []).map(([longitude, latitude]) => ({
+      longitude,
+      latitude,
+    })),
+  );
   let zoom = zoomForRadius(radiusMeters);
   let centre = lonLatToTile(longitude, latitude, zoom);
   // Keep both pins within the smallest map viewport (280 px high).
   while (
     zoom > 0 &&
-    points.some((point) => {
+    [...points, ...routePoints].some((point) => {
       const tile = lonLatToTile(point.longitude, point.latitude, zoom);
       return (
         Math.abs((tile.x - centre.x) * TILE_SIZE + tile.px - centre.px) > 100 ||
@@ -97,6 +106,27 @@ export function LocationMap({
         aria-hidden="true"
         style={{ width: ringDiameter, height: ringDiameter }}
       />
+      {areas.map((area, index) => {
+        const route = walking?.[area.id];
+        if (!route) return null;
+        const path = route.coordinates
+          .map(([lon, lat]) => {
+            const tile = lonLatToTile(lon, lat, zoom);
+            return `${(tile.x - centre.x) * TILE_SIZE + tile.px - centre.px},${(tile.y - centre.y) * TILE_SIZE + tile.py - centre.py}`;
+          })
+          .join(" ");
+        return (
+          <svg key={area.id} className={styles.walkPath} aria-hidden="true">
+            <polyline
+              points={path}
+              stroke={index === 0 ? "#a13120" : "#37684a"}
+            />
+          </svg>
+        );
+      })}
+      <span className={styles.destinationPin} aria-hidden="true">
+        ⌂
+      </span>
       {areas.map((area, index) => {
         const tile = lonLatToTile(
           points[index].longitude,

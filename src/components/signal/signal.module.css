@@ -530,6 +530,40 @@
   background: #6fbe5f18;
   pointer-events: none;
 }
+.walkPath {
+  position: absolute;
+  z-index: 1;
+  left: 50%;
+  top: 50%;
+  width: 1px;
+  height: 1px;
+  overflow: visible;
+  pointer-events: none;
+}
+.walkPath polyline {
+  fill: none;
+  stroke-width: 5;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  paint-order: stroke;
+}
+.destinationPin {
+  position: absolute;
+  z-index: 2;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  display: grid;
+  place-items: center;
+  width: 24px;
+  height: 24px;
+  border: 2px solid #fff;
+  border-radius: 50%;
+  background: #203e29;
+  color: #fff;
+  font-size: 16px;
+  box-shadow: 0 2px 8px #203e2944;
+}
 .mapCredit {
   position: absolute;
   right: 8px;

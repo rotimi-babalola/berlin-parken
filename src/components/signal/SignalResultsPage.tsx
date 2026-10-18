@@ -6,8 +6,11 @@ import { useEffect, useState } from "react";
 import type { SearchReady } from "@/hooks/use-address-search";
 import { useLocale } from "@/lib/i18n";
 import { ensureParkingContext } from "@/lib/parking-context";
+import { candidateMapPoint } from "@/lib/candidate-map";
 import type { ParkingSummary } from "@/lib/parking";
+import { suggestedAreas } from "@/lib/parking";
 import type { ParkingContext } from "@/lib/parking-context";
+import type { WalkingRoute } from "@/lib/walking-route";
 import { parseResultsParams } from "@/lib/results-url";
 import { SignalDetails } from "./SignalDetails";
 import { SignalFooter } from "./SignalFooter";
@@ -29,12 +32,17 @@ export function SignalResultsPage() {
     reqKey: string;
     parking: ParkingResult;
   } | null>(null);
+  const [walkResult, setWalkResult] = useState<{
+    reqKey: string;
+    routes: Record<string, WalkingRoute | null>;
+  } | null>(null);
 
   const parsed = parseResultsParams(rawParams);
   // Loading is derived from whether the latest request resolved, so no
   // state sync inside the fetch effect below.
   const reqKey = `${rawParams.toString()}#${attempt}`;
   const parking = result?.reqKey === reqKey ? result.parking : null;
+  const walking = walkResult?.reqKey === reqKey ? walkResult.routes : null;
   const loading = parsed.ok && parking === null;
 
   useEffect(() => {
@@ -106,6 +114,41 @@ export function SignalResultsPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps -- re-fetch on URL change or manual retry; `reqKey` already covers both, and `parsed`/`t` derive from the same params.
   }, [reqKey]);
 
+  useEffect(() => {
+    if (!parsed.ok || !parking || parking.status === "unavailable") return;
+    const areas = suggestedAreas(parking.candidates ?? []);
+    const controller = new AbortController();
+    Promise.all(
+      areas.map(async (area) => {
+        const from = candidateMapPoint(
+          area,
+          parsed.value.longitude,
+          parsed.value.latitude,
+        );
+        const params = new URLSearchParams({
+          fromLat: String(from.latitude),
+          fromLon: String(from.longitude),
+          toLat: String(parsed.value.latitude),
+          toLon: String(parsed.value.longitude),
+        });
+        try {
+          const response = await fetch(`/api/walk?${params}`, {
+            signal: controller.signal,
+          });
+          if (!response.ok) throw new Error("Walking route unavailable");
+          return [area.id, (await response.json()) as WalkingRoute] as const;
+        } catch {
+          return [area.id, null] as const;
+        }
+      }),
+    ).then((entries) => {
+      if (!controller.signal.aborted)
+        setWalkResult({ reqKey, routes: Object.fromEntries(entries) });
+    });
+    return () => controller.abort();
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- `reqKey` and the matching parking response cover the parsed coordinates.
+  }, [parking, reqKey]);
+
   if (!parsed.ok) {
     return (
       <div className={styles.page}>
@@ -164,6 +207,7 @@ export function SignalResultsPage() {
         <SignalResultStrip
           search={search}
           parking={parking}
+          walking={walking}
           loading={loading}
           zones={zones}
           events={events}
