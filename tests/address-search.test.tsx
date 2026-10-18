@@ -451,7 +451,7 @@ describe("SignalResultsPage", () => {
     expect(within(map).getByText("Torstraße")).toBeTruthy();
     expect(within(map).getByText("Linienstraße")).toBeTruthy();
     const drivingLinks = screen.getAllByRole("link", {
-      name: "Drive to this area ↗",
+      name: "Drive to this area",
     });
     expect(drivingLinks).toHaveLength(2);
     const drivingTargets = drivingLinks.map((link) =>
@@ -461,11 +461,13 @@ describe("SignalResultsPage", () => {
     expect(drivingTargets[0]).not.toBe(drivingTargets[1]);
     expect(
       screen.getAllByRole("link", {
-        name: "Walk from here to the address ↗",
+        name: "Walk from here to the address",
       }),
     ).toHaveLength(2);
     expect(
-      await screen.findAllByText(/Walk to address: 260 m · about 4 min/),
+      await screen.findAllByText(
+        /Estimated walk to address: 260 m · about 4 min/,
+      ),
     ).toHaveLength(2);
     expect(map.querySelectorAll("polyline")).toHaveLength(2);
     const walkRequests = vi
@@ -693,7 +695,7 @@ describe("SignalResultsPage", () => {
         .getAttribute("href"),
     ).toBe("/");
     expect(
-      screen.getByRole("link", { name: "← Back to Berlin parking search" }),
+      screen.getByRole("link", { name: "Back to Berlin parking search" }),
     ).toBeTruthy();
     expect(
       screen.getByRole("combobox", { name: "Destination address" }),

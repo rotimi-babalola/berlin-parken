@@ -1,6 +1,7 @@
 import { useState } from "react";
 import type { ParkingSummary } from "@/lib/parking";
 import { useLocale } from "@/lib/i18n";
+import { ArrowLeft, ArrowRight } from "@/components/icons";
 import styles from "./address-search.module.css";
 
 const ROMAN = ["I.", "II.", "III.", "IV.", "V.", "VI.", "VII.", "VIII."];
@@ -67,7 +68,7 @@ export function StreetRanking({
             aria-label={t("streets.prevAria")}
             onClick={() => setPage((p) => Math.max(0, p - 1))}
           >
-            {t("streets.prev")}
+            <ArrowLeft /> {t("streets.prev")}
           </button>
           <span role="status" className={styles.carouselStatus}>
             {t("streets.count", {
@@ -83,7 +84,7 @@ export function StreetRanking({
             aria-label={t("streets.nextAria")}
             onClick={() => setPage((p) => Math.min(pageCount - 1, p + 1))}
           >
-            {t("streets.next")}
+            {t("streets.next")} <ArrowRight />
           </button>
         </div>
       )}

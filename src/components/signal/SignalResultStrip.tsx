@@ -9,6 +9,7 @@ import { useLocale } from "@/lib/i18n";
 import { formatVisit } from "@/lib/search-time";
 import type { WalkingRoute } from "@/lib/walking-route";
 import { LocationMap } from "./LocationMap";
+import { ArrowDown, ArrowUpRight } from "@/components/icons";
 import styles from "./signal.module.css";
 
 type Props = {
@@ -94,38 +95,40 @@ export function SignalResultStrip({
 
   return (
     <section className={styles.results} aria-live="polite">
-      <div className={styles.metric}>
-        <span>{t("signal.metricEyebrow", { radius })}</span>
-        <strong>{parking.mappedSpaces.toLocaleString(locale)}</strong>
-        <p>
-          {t("signal.metricCaption", {
-            destination: search.destination.label,
-          })}
-        </p>
-        <p>
-          {formatVisit(t, search.arrivalMs, search.durationMinutes, locale)}
-        </p>
-        <small>{t("signal.metricNote")}</small>
-        {parking.status === "partial" && (
-          <small role="status">{t("results.partialNotice")}</small>
-        )}
-      </div>
-      <div className={styles.mapCell}>
-        <LocationMap
-          longitude={search.destination.longitude}
-          latitude={search.destination.latitude}
-          radiusMeters={search.radiusMeters}
-          destination={search.destination.label}
-          areas={areas}
-          walking={walking}
-        />
+      <div className={styles.overview}>
+        <div className={styles.metric}>
+          <span>{t("signal.metricEyebrow", { radius })}</span>
+          <strong>{parking.mappedSpaces.toLocaleString(locale)}</strong>
+          <p>
+            {t("signal.metricCaption", {
+              destination: search.destination.label,
+            })}
+          </p>
+          <p>
+            {formatVisit(t, search.arrivalMs, search.durationMinutes, locale)}
+          </p>
+          <small>{t("signal.metricNote")}</small>
+          {parking.status === "partial" && (
+            <small role="status">{t("results.partialNotice")}</small>
+          )}
+        </div>
+        <div className={styles.mapCell}>
+          <LocationMap
+            longitude={search.destination.longitude}
+            latitude={search.destination.latitude}
+            radiusMeters={search.radiusMeters}
+            destination={search.destination.label}
+            areas={areas}
+            walking={walking}
+          />
+        </div>
       </div>
       <div className={styles.checklist}>
         <span>{t("signal.checklistTitle")}</span>
         {areas.map((area, index) => {
           const route = walking?.[area.id];
           return (
-            <div key={area.id}>
+            <div className={styles.areaCard} key={area.id}>
               <b>{index === 0 ? "01" : "02"}</b>
               <strong>
                 {t(index === 0 ? "signal.firstArea" : "signal.backupArea")}:{" "}
@@ -166,7 +169,7 @@ export function SignalResultStrip({
                 target="_blank"
                 rel="noopener noreferrer"
               >
-                {t("signal.navigateToArea")}
+                {t("signal.navigateToArea")} <ArrowUpRight />
               </a>
               <a
                 className={styles.areaLink}
@@ -178,7 +181,7 @@ export function SignalResultStrip({
                 target="_blank"
                 rel="noopener noreferrer"
               >
-                {t("signal.walkToAddress")}
+                {t("signal.walkToAddress")} <ArrowUpRight />
               </a>
             </div>
           );
@@ -214,7 +217,7 @@ export function SignalResultStrip({
         </div>
         <small>{t("signal.rankingNote")}</small>
         <a className={styles.detailsJump} href="#explore-title">
-          {t("signal.detailsLink")}
+          {t("signal.detailsLink")} <ArrowDown />
         </a>
       </div>
     </section>

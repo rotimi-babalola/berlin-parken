@@ -3,6 +3,7 @@
 import { useState } from "react";
 import type { PlannedEvent } from "@/lib/parking-context";
 import { useLocale } from "@/lib/i18n";
+import { ArrowLeft, ArrowRight } from "@/components/icons";
 import styles from "./address-search.module.css";
 import { EventItem } from "./event-item";
 
@@ -39,7 +40,7 @@ export function EventCarousel({ items }: { items: PlannedEvent[] }) {
             aria-label={t("events.prevAria")}
             onClick={() => setPage((p) => Math.max(0, p - 1))}
           >
-            {t("events.prev")}
+            <ArrowLeft /> {t("events.prev")}
           </button>
           <span role="status" className={styles.carouselStatus}>
             {t("events.count", {
@@ -55,7 +56,7 @@ export function EventCarousel({ items }: { items: PlannedEvent[] }) {
             aria-label={t("events.nextAria")}
             onClick={() => setPage((p) => Math.min(pageCount - 1, p + 1))}
           >
-            {t("events.next")}
+            {t("events.next")} <ArrowRight />
           </button>
         </div>
       )}

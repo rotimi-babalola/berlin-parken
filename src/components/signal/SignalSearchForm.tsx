@@ -3,6 +3,7 @@
 import { useId } from "react";
 import type { KeyboardEvent, RefObject, SubmitEvent } from "react";
 import type { AddressSuggestion } from "@/lib/geocoder/types";
+import { ArrowUpRight } from "@/components/icons";
 import { useLocale } from "@/lib/i18n";
 import { DURATION_OPTIONS, formatDuration } from "@/lib/search-time";
 import styles from "./signal.module.css";
@@ -158,7 +159,9 @@ export function SignalSearchForm({
         </div>
         <button type="submit">
           {t("search.submit")}
-          <span aria-hidden="true">↗</span>
+          <span aria-hidden="true">
+            <ArrowUpRight />
+          </span>
         </button>
       </div>
       <div className={styles.radiusGroup}>

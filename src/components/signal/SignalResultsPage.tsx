@@ -12,6 +12,7 @@ import { suggestedAreas } from "@/lib/parking";
 import type { ParkingContext } from "@/lib/parking-context";
 import type { WalkingRoute } from "@/lib/walking-route";
 import { parseResultsParams } from "@/lib/results-url";
+import { ArrowLeft } from "@/components/icons";
 import { SignalDetails } from "./SignalDetails";
 import { SignalFooter } from "./SignalFooter";
 import { SignalHeader } from "./SignalHeader";
@@ -156,7 +157,7 @@ export function SignalResultsPage() {
         <main>
           <div className={styles.resultsTop}>
             <Link className={styles.backLink} href="/">
-              {t("results.back")}
+              <ArrowLeft /> {t("results.back")}
             </Link>
           </div>
           <SignalResultsSearch key={rawParams.toString()} />
@@ -196,7 +197,7 @@ export function SignalResultsPage() {
       <main>
         <div className={styles.resultsTop}>
           <Link className={styles.backLink} href="/">
-            {t("results.back")}
+            <ArrowLeft /> {t("results.back")}
           </Link>
           <h1 className={styles.resultsTitle}>{parsed.value.label}</h1>
         </div>

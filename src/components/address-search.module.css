@@ -537,6 +537,9 @@
   border-top: 2px solid var(--ink);
 }
 .carouselButton {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
   padding: 8px 14px;
   border: 1px solid var(--ink);
   border-radius: 999px;

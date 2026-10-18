@@ -5,6 +5,7 @@ import { useLocale } from "@/lib/i18n";
 import { formatVisit } from "@/lib/search-time";
 import { AssessmentCard } from "@/components/assessment-card";
 import { EventSection } from "@/components/event-section";
+import { Plus } from "@/components/icons";
 import { StreetRanking } from "@/components/street-ranking";
 import { SupplyTable } from "@/components/supply-table";
 import { ZoneSection } from "@/components/zone-section";
@@ -50,7 +51,9 @@ export function SignalDetails({ search, parking, zones, events }: Props) {
               {t("signal.streetsCount", {
                 count: parking.streets.length,
               })}{" "}
-              <b aria-hidden="true">＋</b>
+              <b aria-hidden="true">
+                <Plus />
+              </b>
             </span>
           </summary>
           <div className={styles.detailBody}>
@@ -96,7 +99,9 @@ export function SignalDetails({ search, parking, zones, events }: Props) {
             </span>
             <span className={styles.detailCount}>
               {t("signal.zonesCount", { count: zones.items.length })}{" "}
-              <b aria-hidden="true">＋</b>
+              <b aria-hidden="true">
+                <Plus />
+              </b>
             </span>
           </summary>
           <div className={styles.detailBody}>
@@ -117,7 +122,9 @@ export function SignalDetails({ search, parking, zones, events }: Props) {
             </span>
             <span className={styles.detailCount}>
               {t("signal.eventsCount", { count: events.items.length })}{" "}
-              <b aria-hidden="true">＋</b>
+              <b aria-hidden="true">
+                <Plus />
+              </b>
             </span>
           </summary>
           <div className={styles.detailBody}>
