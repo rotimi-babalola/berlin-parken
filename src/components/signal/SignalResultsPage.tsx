@@ -109,7 +109,7 @@ export function SignalResultsPage() {
   if (!parsed.ok) {
     return (
       <div className={styles.page}>
-        <SignalHeader startHref="/" />
+        <SignalHeader />
         <main>
           <div className={styles.resultsTop}>
             <Link className={styles.backLink} href="/">
@@ -149,7 +149,7 @@ export function SignalResultsPage() {
 
   return (
     <div className={styles.page}>
-      <SignalHeader startHref="/" />
+      <SignalHeader />
       <main>
         <div className={styles.resultsTop}>
           <Link className={styles.backLink} href="/">

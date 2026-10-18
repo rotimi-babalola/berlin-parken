@@ -33,18 +33,6 @@
   font-weight: 800;
   letter-spacing: 0.16em;
 }
-.headerLink {
-  color: inherit;
-  font-size: 12px;
-  font-weight: 800;
-  text-decoration: none;
-  border-bottom: 1px solid;
-  padding: 8px 0;
-  white-space: nowrap;
-}
-.headerLink:hover {
-  opacity: 0.85;
-}
 .headerRight {
   display: flex;
   align-items: center;
@@ -55,6 +43,8 @@
 .brand {
   display: inline-flex;
   align-items: center;
+  color: inherit;
+  text-decoration: none;
   white-space: nowrap;
   font-size: 21px;
   letter-spacing: -0.06em;
@@ -463,6 +453,11 @@
   color: #51685a;
   font-size: 12px;
 }
+.checklist > small {
+  display: block;
+  margin-top: 12px;
+  line-height: 1.5;
+}
 .detailsJump {
   display: inline-block;
   margin-top: 18px;
@@ -824,9 +819,6 @@
   .header {
     padding: 0 20px;
     min-height: 70px;
-  }
-  .headerLink {
-    display: none;
   }
   .brand {
     font-size: 18px;

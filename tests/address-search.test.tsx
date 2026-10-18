@@ -23,10 +23,15 @@ vi.mock("next/link", () => ({
   default: ({
     href,
     children,
+    ...props
   }: {
     href: string;
     children: React.ReactNode;
-  }) => <a href={href}>{children}</a>,
+  } & React.AnchorHTMLAttributes<HTMLAnchorElement>) => (
+    <a href={href} {...props}>
+      {children}
+    </a>
+  ),
 }));
 
 const suggestions: AddressSuggestion[] = Array.from(
@@ -104,6 +109,12 @@ describe("SignalPage", () => {
   it("navigates to the results page with the search as URL params", async () => {
     stubGeocode();
     await fillAndChooseSuggestion();
+    expect(
+      screen
+        .getByRole("link", { name: "Berlin Parken home" })
+        .getAttribute("href"),
+    ).toBe("/");
+    expect(screen.queryByRole("link", { name: /Start searching/ })).toBeNull();
     fireEvent.change(screen.getByLabelText("Intended stay"), {
       target: { value: "120" },
     });
@@ -314,17 +325,20 @@ describe("SignalPage", () => {
 });
 
 describe("SignalResultsPage", () => {
-  function stubParking(payload: unknown) {
+  function stubParking(payload: Record<string, unknown>) {
     vi.stubGlobal(
       "fetch",
-      vi.fn(async () => ({ ok: true, json: async () => payload })),
+      vi.fn(async () => ({
+        ok: true,
+        json: async () => ({ candidates: [], ...payload }),
+      })),
     );
   }
 
   it("renders the supply estimate with a level bar and ranked streets", async () => {
     searchParamsValue = validResultsParams();
     stubParking({
-      status: "available",
+      status: "partial",
       mappedSpaces: 850,
       usableSpaces: 600,
       conditionalSpaces: 150,
@@ -351,11 +365,41 @@ describe("SignalResultsPage", () => {
           nearestMeters: 340,
         },
       ],
+      candidates: [
+        {
+          id: "first",
+          streetName: "Torstraße",
+          usability: "usable",
+          mappedSpaces: 20,
+          distanceMeters: 120,
+        },
+        {
+          id: "same-street",
+          streetName: "Torstraße",
+          usability: "usable",
+          mappedSpaces: 10,
+          distanceMeters: 130,
+        },
+        {
+          id: "backup",
+          streetName: "Linienstraße",
+          usability: "conditional",
+          mappedSpaces: 15,
+          distanceMeters: 200,
+        },
+      ],
     });
 
     render(<SignalResultsPage />);
 
-    await screen.findByText("WHAT YOU CAN CHECK");
+    await screen.findByText("WHERE TO LOOK FIRST");
+    expect(screen.getByText("First area: Torstraße")).toBeTruthy();
+    expect(screen.getByText("Backup area: Linienstraße")).toBeTruthy();
+    expect(screen.queryByText("First area: Linienstraße")).toBeNull();
+    expect(screen.getByText(/Partial parking data/)).toBeTruthy();
+    expect(
+      screen.getByText(/20 mapped spaces · 120 m straight line/),
+    ).toBeTruthy();
     expect(
       screen.getByRole("heading", { name: "Alexanderplatz 1" }),
     ).toBeTruthy();
@@ -402,7 +446,7 @@ describe("SignalResultsPage", () => {
 
     render(<SignalResultsPage />);
 
-    await screen.findByText("WHAT YOU CAN CHECK");
+    await screen.findByText("WHERE TO LOOK FIRST");
     openEvents();
     const details = screen
       .getByText("03 / PLANNED CHANGES")
@@ -476,6 +520,11 @@ describe("SignalResultsPage", () => {
     render(<SignalResultsPage />);
 
     await screen.findByText(/incomplete/);
+    expect(
+      screen
+        .getByRole("link", { name: "Berlin Parken home" })
+        .getAttribute("href"),
+    ).toBe("/");
     expect(screen.getByRole("link", { name: "← Home" })).toBeTruthy();
     expect(
       screen.getByRole("combobox", { name: "Destination address" }),

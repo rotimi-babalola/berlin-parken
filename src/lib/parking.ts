@@ -44,6 +44,18 @@ export type ParkingSummary = {
   candidates: ParkingCandidate[];
 };
 
+export function suggestedAreas(
+  candidates: ParkingCandidate[],
+): ParkingCandidate[] {
+  const first = candidates.find((candidate) => candidate.streetName);
+  if (!first) return [];
+  const backup = candidates.find(
+    (candidate) =>
+      candidate.streetName && candidate.streetName !== first.streetName,
+  );
+  return backup ? [first, backup] : [first];
+}
+
 export type Position = [number, number];
 type Ring = Position[];
 type Polygon = Ring[];
@@ -575,10 +587,13 @@ function classify(
       category,
     )
   )
-    // Outside records carry no fee/duration fields in the mapped dataset, so
-    // a timed outside category stays conditional by design; loading-zone
-    // hours only refine the unrestricted/banned categories around this branch.
-    return "conditional";
+    return loadingTime
+      ? classifyByValidity(loadingTime, stay, {
+          active: "restricted",
+          inactive: "conditional",
+          noStay: "conditional",
+        })
+      : "conditional";
   if (category === "Nutzungsgruppe") return "restricted";
   if (["Parkverbot", "Ladezone", "Beschränkungen"].includes(category)) {
     if (!loadingTime) return "restricted";
@@ -812,9 +827,22 @@ export async function getNearbyParking(
   );
 }
 
-// Payload bound: the nearest eligible segments are enough to plan a first
-// and backup area, so the API does not carry every polygon in the radius.
+// Payload bound: return the strongest eligible segments without carrying
+// every polygon in the radius.
 const MAX_CANDIDATES = 25;
+
+function compareCandidates(a: ParkingCandidate, b: ParkingCandidate): number {
+  if (a.usability !== b.usability) return a.usability === "usable" ? -1 : 1;
+  // A 100 m baseline keeps a tiny segment at the destination from
+  // automatically outranking a much larger mapped segment nearby.
+  const aScore = a.mappedSpaces / (a.distanceMeters + 100);
+  const bScore = b.mappedSpaces / (b.distanceMeters + 100);
+  return (
+    bScore - aScore ||
+    a.distanceMeters - b.distanceMeters ||
+    a.id.localeCompare(b.id)
+  );
+}
 
 function summarize(
   features: Feature[],
@@ -896,10 +924,12 @@ function summarize(
     .map(([name, values]) => ({ name, ...values }))
     .sort((a, b) => b.mappedSpaces - a.mappedSpaces)
     .slice(0, 8);
-  result.candidates = candidates
-    .sort(
-      (a, b) => a.distanceMeters - b.distanceMeters || a.id.localeCompare(b.id),
-    )
-    .slice(0, MAX_CANDIDATES);
+  const ranked = candidates.sort(compareCandidates);
+  const retained = new Set(suggestedAreas(ranked));
+  for (const candidate of ranked) {
+    if (retained.size === MAX_CANDIDATES) break;
+    retained.add(candidate);
+  }
+  result.candidates = [...retained].sort(compareCandidates);
   return result;
 }
