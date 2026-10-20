@@ -862,6 +862,195 @@
   color: #526658;
 }
 
+/* Area guides */
+.areaLinks {
+  padding: 48px var(--signal-gutter) 56px;
+  border-top: 1px solid #b9caba;
+}
+.areaLinksHead {
+  display: flex;
+  align-items: end;
+  justify-content: space-between;
+  gap: 24px;
+  flex-wrap: wrap;
+}
+.areaLinksHead h2 {
+  margin: 8px 0 0;
+  font-size: clamp(28px, 3.2vw, 42px);
+  letter-spacing: -0.05em;
+  line-height: 1.05;
+}
+.areaLinksHead p {
+  max-width: 420px;
+  margin: 0;
+  color: #42574b;
+  line-height: 1.5;
+}
+.areaCards {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin: 24px 0 0;
+  padding: 0;
+  list-style: none;
+}
+.areaCards li {
+  flex: 1 1 280px;
+  max-width: 420px;
+  display: flex;
+}
+.areaCard {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: 8px;
+  padding: 22px;
+  border: 1px solid #c3d2c3;
+  border-left: 4px solid #b84727;
+  border-radius: 4px;
+  background: #f8fbf4;
+  color: inherit;
+  text-decoration: none;
+}
+.areaCard:hover {
+  background: #fff;
+}
+.areaCard strong {
+  font-size: 24px;
+  letter-spacing: -0.04em;
+}
+.areaCard span {
+  color: #42574b;
+  line-height: 1.5;
+}
+.areaCard small {
+  margin-top: auto;
+  padding-top: 10px;
+  color: var(--detail-accent);
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+.areaMain {
+  max-width: 920px;
+  margin: 0 auto;
+  padding: 54px var(--signal-gutter) 70px;
+}
+.areaEyebrow {
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.16em;
+  color: var(--detail-accent);
+}
+.areaTitle {
+  margin: 10px 0 18px;
+  font-size: clamp(38px, 5vw, 64px);
+  line-height: 0.98;
+  letter-spacing: -0.065em;
+}
+.areaLede {
+  max-width: 70ch;
+  margin: 0;
+  color: #42574b;
+  font-size: 19px;
+  line-height: 1.55;
+}
+.areaActions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 16px 22px;
+  margin: 28px 0;
+}
+.areaSearchButton {
+  min-height: 48px;
+  border: 0;
+  border-radius: 3px;
+  padding: 0 20px;
+  background: #153f2c;
+  color: #fff;
+  font-size: 15px;
+  font-weight: 800;
+  cursor: pointer;
+}
+.areaActions a {
+  color: var(--detail-accent);
+  font-weight: 700;
+  text-underline-offset: 4px;
+}
+.areaCaveat {
+  margin: 0;
+  padding: 16px 18px;
+  border: 1px solid #d8b3a7;
+  border-left: 4px solid #b84727;
+  background: #fbf0eb;
+  color: #5a2b21;
+  font-size: 14px;
+  line-height: 1.55;
+}
+.areaSection {
+  margin-top: 42px;
+}
+.areaSection h2 {
+  margin: 0 0 12px;
+  font-size: clamp(24px, 2.8vw, 32px);
+  letter-spacing: -0.04em;
+}
+.areaSection p {
+  max-width: 70ch;
+  margin: 0;
+  color: #42574b;
+  line-height: 1.6;
+}
+.areaRules {
+  display: grid;
+  gap: 14px;
+  margin: 0;
+}
+.areaRules > div {
+  display: grid;
+  grid-template-columns: minmax(150px, 0.45fr) 1fr;
+  gap: 6px 20px;
+  padding-top: 14px;
+  border-top: 1px solid #b9caba;
+}
+.areaRules dt {
+  font-weight: 800;
+}
+.areaRules dd {
+  margin: 0;
+  color: #42574b;
+  line-height: 1.55;
+}
+.areaSources {
+  display: grid;
+  gap: 8px;
+  margin: 0;
+  padding-left: 20px;
+}
+.areaSources a {
+  color: var(--detail-accent);
+}
+.areaSourceNote {
+  margin: 14px 0 0;
+  color: #526658;
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+@media (max-width: 640px) {
+  .areaRules > div {
+    grid-template-columns: 1fr;
+  }
+  .areaLinks {
+    padding-top: 36px;
+  }
+  .areaMain {
+    padding-top: 40px;
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   .detailCount b {
     transition: none;

@@ -1,6 +1,7 @@
 "use client";
 
 import { useAddressSearch } from "@/hooks/use-address-search";
+import { AreaLinks } from "./AreaLinks";
 import { SignalFooter } from "./SignalFooter";
 import { SignalHeader } from "./SignalHeader";
 import { SignalHero } from "./SignalHero";
@@ -51,6 +52,7 @@ export function SignalPage() {
             />
           </SignalSearchPanel>
         </SignalHero>
+        <AreaLinks />
       </main>
       <SignalFooter />
     </div>
