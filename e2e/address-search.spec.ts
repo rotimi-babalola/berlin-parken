@@ -154,7 +154,9 @@ test("searches, selects an address, and shows nearby parking", async ({
   await expect(
     page.getByRole("heading", { name: "Alexanderplatz 1" }),
   ).toBeVisible();
-  const area = page.getByText("First area: Alexanderstraße").locator("..");
+  const area = page
+    .getByRole("heading", { name: "First area: Alexanderstraße" })
+    .locator("..");
   const numberBox = await area.locator("b").boundingBox();
   const routeBox = await area.locator("small").nth(1).boundingBox();
   expect(numberBox).not.toBeNull();

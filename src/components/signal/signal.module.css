@@ -406,15 +406,15 @@
   padding-inline: clamp(24px, 3vw, 52px);
 }
 .metric > span,
-.checklist > span {
+.checklistTitle {
   font-size: 10px;
   font-weight: 800;
   letter-spacing: 0.14em;
   color: #37684a;
 }
-.checklist > span {
-  display: block;
-  margin-bottom: 18px;
+.checklistTitle {
+  margin: 0 0 18px;
+  line-height: 1.4;
 }
 .metric strong {
   display: block;
@@ -439,64 +439,176 @@
   padding: 0;
   border-top: 1px solid #b9caba;
 }
-.checklist > div {
+.checkRow {
   display: grid;
   grid-template-columns: 30px minmax(0, 1fr);
   gap: 5px 12px;
   border-bottom: 1px solid #b9caba;
   padding: 18px 0;
 }
-.checklist > .areaCard {
-  padding: 18px;
-  margin-bottom: 10px;
-  border: 1px solid #c3d2c3;
-  border-left: 4px solid #b84727;
-  border-radius: 4px;
-  background: #f8fbf4;
-}
-.checklist > .areaCard:nth-of-type(2) {
-  border-left-color: #286b43;
-}
-.checklist > div:last-of-type {
+.checkRow:last-of-type {
   border-bottom: 0;
 }
-.checklist b {
+.checkRow b {
   color: #b84727;
   font-size: 12px;
   grid-column: 1;
   grid-row: 1 / span 3;
   line-height: 1.5;
 }
-.checklist strong,
-.checklist small,
-.areaLink {
+.checkRow strong,
+.checkRow small {
   grid-column: 2;
   min-width: 0;
   overflow-wrap: break-word;
 }
-.checklist strong {
+.checkRow strong {
   font-size: 16px;
   line-height: 1.35;
 }
-.checklist small {
+.checkRow small {
   color: #51685a;
   font-size: 14px;
   line-height: 1.45;
 }
-.areaLink {
+.resultAreaCard {
+  display: grid;
+  grid-template-columns: 32px minmax(0, 1fr);
+  gap: 6px 16px;
+  padding: 22px 22px 20px;
+  margin-bottom: 12px;
+  border: 1px solid #c3d2c3;
+  border-left: 4px solid #b84727;
+  border-radius: 5px;
+  background: #f8fbf4;
+}
+.resultAreaCard + .resultAreaCard {
+  border-left-color: #286b43;
+}
+.resultAreaNumber {
+  grid-column: 1;
+  grid-row: 1 / span 4;
+  padding-top: 2px;
+  color: #b84727;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.1em;
+  line-height: 1.4;
+  font-variant-numeric: tabular-nums;
+}
+.resultAreaCard + .resultAreaCard .resultAreaNumber {
+  color: #286b43;
+}
+.resultAreaName {
+  grid-column: 2;
+  margin: 0;
+  font-size: clamp(21px, 2.1vw, 27px);
+  font-weight: bold;
+  letter-spacing: -0.045em;
+  line-height: 1.08;
+}
+.resultAreaKicker {
+  display: block;
+  margin-bottom: 5px;
+  color: #37684a;
+  font-size: 12px;
+  font-weight: bold;
+  letter-spacing: 0.13em;
+  line-height: 1.4;
+  text-transform: uppercase;
+}
+.resultAreaStreet {
+  display: block;
+  overflow-wrap: anywhere;
+  text-wrap: balance;
+}
+.resultAreaSuitability,
+.resultAreaWalk {
+  grid-column: 2;
+  color: #51685a;
+  font-size: 13px;
+  line-height: 1.5;
+}
+.resultAreaSuitability {
+  display: flex;
+  align-items: flex-start;
+  gap: 7px;
+  margin-top: 4px;
+  color: #245f39;
+  font-weight: bold;
+}
+.resultAreaSuitability::before {
+  content: "";
+  width: 6px;
+  height: 6px;
+  margin-top: 0.52em;
+  border-radius: 50%;
+  background: #3e9c5b;
+  flex: none;
+}
+.resultAreaConditional::before {
+  background: #c26a2e;
+}
+.resultAreaWalk {
+  color: #51685a;
+  font-weight: 500;
+}
+.resultAreaActions {
+  grid-column: 2;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 16px;
+  margin-top: 8px;
+}
+.resultAreaPrimary,
+.resultAreaSecondary {
   display: inline-flex;
   align-items: center;
+  justify-content: center;
   gap: 6px;
-  min-height: 44px;
-  margin-top: 4px;
-  font-size: 14px;
-  font-weight: 700;
-  color: var(--detail-accent);
+  min-height: 40px;
+  font-size: 12px;
+  font-weight: 800;
+  text-decoration-thickness: 1px;
+  text-underline-offset: 3px;
+}
+.resultAreaPrimary {
+  padding: 0 14px;
+  border-radius: 3px;
+  background: #153f2c;
+  color: #fff;
+  text-decoration: none;
+}
+.resultAreaPrimary:hover {
+  background: #286b43;
+}
+.resultAreaSecondary {
+  padding: 0 2px;
+  color: #286b43;
 }
 .checklist > small {
   display: block;
   margin-top: 12px;
   line-height: 1.5;
+}
+@media (max-width: 520px) {
+  .resultAreaCard {
+    grid-template-columns: 24px minmax(0, 1fr);
+    gap: 6px 12px;
+    padding: 18px 16px;
+  }
+  .resultAreaName {
+    font-size: 21px;
+  }
+  .resultAreaActions {
+    align-items: stretch;
+    flex-direction: column;
+  }
+  .resultAreaPrimary,
+  .resultAreaSecondary {
+    width: 100%;
+  }
 }
 .detailsJump {
   display: inline-block;
@@ -971,12 +1083,12 @@
   background: #153f2c;
   color: #fff;
   font-size: 15px;
-  font-weight: 800;
+  font-weight: bold;
   cursor: pointer;
 }
 .areaActions a {
   color: var(--detail-accent);
-  font-weight: 700;
+  font-weight: bold;
   text-underline-offset: 4px;
 }
 .areaCaveat {
@@ -1016,7 +1128,7 @@
   border-top: 1px solid #b9caba;
 }
 .areaRules dt {
-  font-weight: 800;
+  font-weight: bold;
 }
 .areaRules dd {
   margin: 0;

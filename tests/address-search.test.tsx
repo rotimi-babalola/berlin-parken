@@ -443,8 +443,15 @@ describe("SignalResultsPage", () => {
     render(<SignalResultsPage />);
 
     await screen.findByText("WHERE TO LOOK FIRST");
-    expect(screen.getByText("First area: Torstraße")).toBeTruthy();
-    expect(screen.getByText("Backup area: Linienstraße")).toBeTruthy();
+    expect(
+      screen.getByRole("heading", { level: 3, name: "First area: Torstraße" }),
+    ).toBeTruthy();
+    expect(
+      screen.getByRole("heading", {
+        level: 3,
+        name: "Backup area: Linienstraße",
+      }),
+    ).toBeTruthy();
     const map = screen.getByRole("img", {
       name: /First area: Torstraße\. Backup area: Linienstraße/,
     });
@@ -476,7 +483,9 @@ describe("SignalResultsPage", () => {
       .filter((url) => url.startsWith("/api/walk"));
     expect(walkRequests).toHaveLength(2);
     expect(walkRequests[0]).not.toBe(walkRequests[1]);
-    expect(screen.queryByText("First area: Linienstraße")).toBeNull();
+    expect(
+      screen.queryByRole("heading", { name: "First area: Linienstraße" }),
+    ).toBeNull();
     expect(screen.getByText(/Partial parking data/)).toBeTruthy();
     expect(screen.getByText(/20 mapped spaces/)).toBeTruthy();
     expect(
@@ -558,7 +567,10 @@ describe("SignalResultsPage", () => {
     });
 
     render(<SignalResultsPage />);
-    await screen.findByText("First area: Torstraße");
+    await screen.findByRole("heading", {
+      level: 3,
+      name: "First area: Torstraße",
+    });
     expect(
       await screen.findByText(/120 m straight line; walking route unavailable/),
     ).toBeTruthy();
