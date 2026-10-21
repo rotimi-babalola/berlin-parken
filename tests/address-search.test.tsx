@@ -17,8 +17,10 @@ import type { AddressSuggestion } from "@/lib/geocoder/types";
 
 const pushMock = vi.fn();
 let searchParamsValue = new URLSearchParams();
+let pathnameValue = "/";
 vi.mock("next/navigation", () => ({
   useRouter: () => ({ push: pushMock }),
+  usePathname: () => pathnameValue,
   useSearchParams: () => searchParamsValue,
 }));
 vi.mock("next/link", () => ({
@@ -58,6 +60,7 @@ afterEach(() => {
   pushMock.mockClear();
   window.localStorage.clear();
   searchParamsValue = new URLSearchParams();
+  pathnameValue = "/";
   if (originalScrollIntoView) {
     Object.defineProperty(
       HTMLElement.prototype,
@@ -263,25 +266,26 @@ describe("SignalPage", () => {
     expect(pushMock).not.toHaveBeenCalled();
   });
 
-  it("switches the UI to German and persists the choice", async () => {
-    window.localStorage.clear();
+  it("renders German from the route locale and links to the English equivalent", async () => {
+    pathnameValue = "/de";
     render(
-      <LocaleProvider>
+      <LocaleProvider locale="de">
         <SignalPage />
       </LocaleProvider>,
     );
 
-    fireEvent.click(screen.getAllByRole("button", { name: "DE" })[0]);
-
     expect(
-      await screen.findByRole("button", {
-        name: "Straßen in der Nähe prüfen",
-      }),
+      screen.getByRole("button", { name: "Straßen in der Nähe prüfen" }),
     ).toBeTruthy();
     expect(
       screen.queryByRole("button", { name: "Check nearby streets" }),
     ).toBeNull();
-    expect(window.localStorage.getItem("berlin-parken-locale")).toBe("de");
+    expect(
+      screen.getByRole("link", { name: /^EN$/ }).getAttribute("href"),
+    ).toBe("/");
+    expect(
+      screen.getByRole("link", { name: /^DE$/ }).getAttribute("aria-current"),
+    ).toBe("page");
   });
 
   it("blocks navigation when the arrival time is in the past", async () => {

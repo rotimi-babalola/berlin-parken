@@ -1,7 +1,8 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
-import { AREAS, getArea, getAreaCopy } from "@/lib/areas";
 import { SignalAreaPage } from "@/components/signal/SignalAreaPage";
+import { AREAS, getArea } from "@/lib/areas";
+import { areaMetadata } from "@/lib/page-metadata";
 
 type Props = { params: Promise<{ slug: string }> };
 
@@ -15,20 +16,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { slug } = await params;
   const area = getArea(slug);
   if (!area) return {};
-  const content = getAreaCopy(area, "en");
-  const url = `/parking/${area.slug}`;
-  return {
-    title: content.metaTitle,
-    description: content.metaDescription,
-    alternates: { canonical: url },
-    openGraph: {
-      type: "website",
-      siteName: "Berlin Parken",
-      title: content.metaTitle,
-      description: content.metaDescription,
-      url,
-    },
-  };
+  return areaMetadata(area, "en");
 }
 
 export default async function AreaPage({ params }: Props) {

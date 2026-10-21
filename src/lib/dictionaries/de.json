@@ -1,4 +1,10 @@
 {
+  "seo": {
+    "homeTitle": "Parken in Berlin: Zonen, Gebühren & Straßenparkplätze | Berlin Parken",
+    "homeDescription": "Prüfe erfasste Straßenparkplätze in der Nähe einer Berliner Adresse, bewirtschaftete Parkzonen, Gebühren und Beschränkungen. Keine Live-Verfügbarkeit.",
+    "resultsTitle": "Parkplatz-Ergebnisse für Berlin | Berlin Parken",
+    "resultsDescription": "Prüfe erfasste Straßenparkplätze, bewirtschaftete Parkzonen, Gebühren und Beschränkungen in der Nähe deiner Berliner Adresse. Keine Live-Verfügbarkeit."
+  },
   "header": {
     "location": "BERLIN, DEUTSCHLAND",
     "languageLabel": "Sprache"

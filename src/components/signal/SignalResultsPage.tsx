@@ -6,6 +6,7 @@ import { useEffect, useMemo, useState } from "react";
 import type { SearchReady } from "@/hooks/use-address-search";
 import { useWalkingRoutes } from "@/hooks/use-walking-routes";
 import { useLocale } from "@/lib/i18n";
+import { localizedPath } from "@/lib/locale-path";
 import { ensureParkingContext } from "@/lib/parking-context";
 import { suggestedAreas, type ParkingSummary } from "@/lib/parking";
 import type { ParkingContext } from "@/lib/parking-context";
@@ -24,7 +25,7 @@ type ParkingResult = ParkingSummary & ParkingContext;
 // result sections as the previous inline layout.
 export function SignalResultsPage() {
   const rawParams = useSearchParams();
-  const { t } = useLocale();
+  const { locale, t } = useLocale();
   const [attempt, setAttempt] = useState(0);
   const [result, setResult] = useState<{
     reqKey: string;
@@ -119,7 +120,7 @@ export function SignalResultsPage() {
       <SignalShell>
         <main>
           <div className={styles.resultsTop}>
-            <Link className={styles.backLink} href="/">
+            <Link className={styles.backLink} href={localizedPath(locale)}>
               <ArrowLeft /> {t("results.back")}
             </Link>
           </div>
@@ -157,7 +158,7 @@ export function SignalResultsPage() {
     <SignalShell>
       <main>
         <div className={styles.resultsTop}>
-          <Link className={styles.backLink} href="/">
+          <Link className={styles.backLink} href={localizedPath(locale)}>
             <ArrowLeft /> {t("results.back")}
           </Link>
           <h1 className={styles.resultsTitle}>{parsed.value.label}</h1>

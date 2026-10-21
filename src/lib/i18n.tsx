@@ -2,11 +2,9 @@
 
 import {
   createContext,
-  useCallback,
   useContext,
   useEffect,
   useMemo,
-  useState,
   type ReactNode,
 } from "react";
 import { translate, type I18nKey, type Locale } from "./dictionaries";
@@ -16,11 +14,20 @@ export type { I18nKey, Locale } from "./dictionaries";
 
 const STORAGE_KEY = "berlin-parken-locale";
 
-function readStoredLocale(): Locale {
+export function readStoredLocale(): Locale | null {
   try {
-    return window.localStorage.getItem(STORAGE_KEY) === "de" ? "de" : "en";
+    const stored = window.localStorage.getItem(STORAGE_KEY);
+    return stored === "de" || stored === "en" ? stored : null;
   } catch {
-    return "en";
+    return null;
+  }
+}
+
+export function rememberLocale(locale: Locale) {
+  try {
+    window.localStorage.setItem(STORAGE_KEY, locale);
+  } catch {
+    // Private mode: the URL still carries the language for this visit.
   }
 }
 
@@ -37,45 +44,33 @@ function format(
 
 type I18n = {
   locale: Locale;
-  setLocale: (locale: Locale) => void;
   t: (key: I18nKey, vars?: Record<string, string | number>) => string;
 };
 
 const I18nContext = createContext<I18n>({
   locale: "en",
-  setLocale: () => {},
   t: (key, vars) => format(translate("en", key), vars),
 });
 
-export function LocaleProvider({ children }: { children: ReactNode }) {
-  // Render "en" on server and first client pass so hydration matches;
-  // then pick up a stored locale in an effect (one extra render for
-  // returning DE users, no discarded SSR tree).
-  const [locale, setLocaleState] = useState<Locale>("en");
-
+// The route decides the language, so server HTML and metadata already match
+// the URL. The stored value only helps return visitors keep their preference.
+export function LocaleProvider({
+  children,
+  locale = "en",
+}: {
+  children: ReactNode;
+  locale?: Locale;
+}) {
   useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect -- stored-locale pickup after hydration-safe "en" first render.
-    setLocaleState(readStoredLocale());
-  }, []);
-
-  useEffect(() => {
-    try {
-      window.localStorage.setItem(STORAGE_KEY, locale);
-    } catch {
-      // Private mode: locale still applies to this session.
-    }
-    document.documentElement.lang = locale;
+    rememberLocale(locale);
   }, [locale]);
-
-  const setLocale = useCallback((next: Locale) => setLocaleState(next), []);
 
   const value = useMemo<I18n>(
     () => ({
       locale,
-      setLocale,
       t: (key, vars) => format(translate(locale, key), vars),
     }),
-    [locale, setLocale],
+    [locale],
   );
 
   return <I18nContext.Provider value={value}>{children}</I18nContext.Provider>;

@@ -33,6 +33,15 @@ test("the results URL round-trips the search query", () => {
   assert.ok(Number.isFinite(parsed.value.arrivalMs));
 });
 
+test("German results URLs keep the query on the /de route", () => {
+  const url = buildResultsUrl(validQuery(), "de");
+  assert.match(url, /^\/de\/results\?/);
+  assert.equal(
+    parseResultsParams(new URL(url, "http://localhost").searchParams).ok,
+    true,
+  );
+});
+
 test("rejects missing, out-of-Berlin, and out-of-range params", () => {
   const query = validQuery();
   const params = (overrides: Record<string, string>) => {
