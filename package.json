@@ -12,6 +12,7 @@
     "format:check": "prettier --check .",
     "test": "node --experimental-strip-types --test tests/*.test.ts && vitest run",
     "test:e2e": "playwright test",
+    "test:e2e:prod": "playwright test e2e/production.spec.ts",
     "prepare": "husky"
   },
   "dependencies": {

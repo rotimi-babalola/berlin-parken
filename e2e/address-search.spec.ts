@@ -243,6 +243,25 @@ test("shows the Bescheid report, side rail, and event carousel", async ({
   await expect(strip).toContainText("850");
   await expect(strip).toContainText("Torstraße");
 
+  await expect(
+    page.getByRole("heading", { name: "First area: Torstraße" }),
+  ).toBeVisible();
+  await expect(
+    page.getByRole("heading", { name: "Backup area: Linienstraße" }),
+  ).toBeVisible();
+  await expect(
+    page.getByText("Estimated walk to address: 260 m · about 4 min"),
+  ).toHaveCount(2);
+  for (const name of ["First area: Torstraße", "Backup area: Linienstraße"]) {
+    const card = page.getByRole("heading", { name }).locator("..");
+    await expect(
+      card.getByRole("link", { name: /Drive to this area/ }),
+    ).toHaveAttribute("href", /google\.com\/maps\/dir/);
+    await expect(
+      card.getByRole("link", { name: /Walk from here to the address/ }),
+    ).toHaveAttribute("href", /openstreetmap\.org\/directions/);
+  }
+
   await page.locator("summary", { hasText: "Nearby streets" }).click();
   const streets = page.locator("details", { hasText: "STREET INVENTORY" });
   await expect(streets.getByText("Moderate", { exact: true })).toBeVisible();
@@ -405,4 +424,50 @@ test("shows recent searches when the destination input is focused", async ({
   ).toHaveValue("Alexanderplatz 1");
   await page.getByRole("button", { name: "Check nearby streets" }).click();
   await page.waitForURL(/\/results\?.*label=Alexanderplatz/);
+});
+
+test("falls back to straight-line distance when walking routes fail", async ({
+  page,
+}) => {
+  await page.route("**/api/walk?**", async (route) => {
+    await route.fulfill({
+      status: 503,
+      json: { error: "Routing unavailable" },
+    });
+  });
+  await page.route("**/api/parking?**", async (route) => {
+    await route.fulfill({
+      json: {
+        status: "available",
+        mappedSpaces: 10,
+        usableSpaces: 10,
+        conditionalSpaces: 0,
+        restrictedSpaces: 0,
+        unknownSpaces: 0,
+        featureCount: 1,
+        streets: [
+          {
+            name: "Torstraße",
+            mappedSpaces: 10,
+            features: 1,
+            nearestMeters: 120,
+          },
+        ],
+        candidates: [candidate("tor", "Torstraße", 120)],
+      } satisfies ParkingSummary,
+    });
+  });
+
+  await page.goto("/");
+  const address = page.getByRole("combobox", { name: "Destination address" });
+  await address.fill("Alexanderplatz");
+  await page.getByRole("option", { name: /Alexanderplatz 1/ }).click();
+  await page.getByRole("button", { name: "Check nearby streets" }).click();
+  await page.waitForURL(/\/results\?/);
+
+  await expect(
+    page.getByText(
+      "Walk to address: 120 m straight line; walking route unavailable",
+    ),
+  ).toBeVisible();
 });

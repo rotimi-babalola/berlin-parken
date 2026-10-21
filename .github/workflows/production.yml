@@ -1,0 +1,55 @@
+name: Production checks
+
+# Vercel reports a deployment status after merging to main. The environment
+# name is "Production" for the production deployment; if the Vercel project
+# uses a different name, run this workflow manually with the deployed URL.
+on:
+  deployment_status:
+  workflow_dispatch:
+    inputs:
+      base_url:
+        description: Deployed URL to check
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: production-checks
+  cancel-in-progress: false
+
+jobs:
+  deployed-app:
+    name: Deployed app checks
+    if: >
+      github.event_name == 'workflow_dispatch' ||
+      (github.event.deployment_status.state == 'success' &&
+      github.event.deployment.environment == 'Production')
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up pnpm
+        uses: pnpm/action-setup@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Install Playwright browser
+        run: pnpm exec playwright install --with-deps chromium
+
+      - name: Run production browser checks
+        run: |
+          : "${PLAYWRIGHT_BASE_URL:?No deployment URL in the event}"
+          pnpm test:e2e:prod
+        env:
+          PLAYWRIGHT_BASE_URL: ${{ inputs.base_url || github.event.deployment_status.environment_url || github.event.deployment_status.target_url }}
