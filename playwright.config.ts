@@ -3,7 +3,8 @@ import { defineConfig, devices } from "@playwright/test";
 const port = process.env.E2E_PORT ?? "3000";
 const localUrl = `http://127.0.0.1:${port}`;
 // Set for the post-deploy run; the local server is not needed then.
-const baseURL = process.env.PLAYWRIGHT_BASE_URL ?? localUrl;
+const remoteUrl = process.env.PLAYWRIGHT_BASE_URL || undefined;
+const baseURL = remoteUrl ?? localUrl;
 
 export default defineConfig({
   testDir: "./e2e",
@@ -15,7 +16,7 @@ export default defineConfig({
     baseURL,
     trace: "retain-on-failure",
   },
-  webServer: process.env.PLAYWRIGHT_BASE_URL
+  webServer: remoteUrl
     ? undefined
     : {
         command: `pnpm start --hostname 127.0.0.1 --port ${port}`,

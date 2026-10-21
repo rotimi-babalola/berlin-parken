@@ -80,6 +80,7 @@ test("runs a real search and shows first area, walk estimate and handoff links",
   ).toBeVisible({ timeout: 20_000 });
 
   expect(parkingStatuses.length).toBeGreaterThan(0);
+  await expect.poll(() => walkStatuses.length).toBeGreaterThan(0);
   expect(parkingStatuses.every((status) => status < 500)).toBe(true);
   expect(walkStatuses.every((status) => status < 500)).toBe(true);
 });
