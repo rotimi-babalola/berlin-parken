@@ -10,6 +10,7 @@ import { formatVisit } from "@/lib/search-time";
 import type { WalkingRoute } from "@/lib/walking-route";
 import { LocationMap } from "./LocationMap";
 import { ArrowDown, ArrowUpRight } from "@/components/icons";
+import resultStyles from "./result-strip.module.css";
 import styles from "./signal.module.css";
 
 type Props = {
@@ -148,17 +149,31 @@ export function SignalResultStrip({
         </div>
       </div>
       <div className={styles.checklist}>
-        <span>{t("signal.checklistTitle")}</span>
+        <h2 className={resultStyles.checklistTitle}>
+          {t("signal.checklistTitle")}
+        </h2>
         {areas.map((area, index) => {
           const route = walking?.[area.id];
           return (
-            <div className={styles.areaCard} key={area.id}>
-              <b>{index === 0 ? "01" : "02"}</b>
-              <strong>
-                {t(index === 0 ? "signal.firstArea" : "signal.backupArea")}:{" "}
-                {area.streetName}
-              </strong>
-              <small>
+            <div className={resultStyles.resultAreaCard} key={area.id}>
+              <b className={resultStyles.resultAreaNumber}>
+                {index === 0 ? "01" : "02"}
+              </b>
+              <h3 className={resultStyles.resultAreaName}>
+                <span className={resultStyles.resultAreaKicker}>
+                  {t(index === 0 ? "signal.firstArea" : "signal.backupArea")}:
+                </span>{" "}
+                <span className={resultStyles.resultAreaStreet}>
+                  {area.streetName}
+                </span>
+              </h3>
+              <small
+                className={`${resultStyles.resultAreaSuitability} ${
+                  area.usability === "conditional"
+                    ? resultStyles.resultAreaConditional
+                    : ""
+                }`}
+              >
                 {t("signal.areaFactors", {
                   suitability: t(
                     area.usability === "usable"
@@ -168,36 +183,40 @@ export function SignalResultStrip({
                   spaces: area.mappedSpaces.toLocaleString(locale),
                 })}
               </small>
-              <small>{walkLabel(t, area, route, walking === null)}</small>
-              <a
-                className={styles.areaLink}
-                href={candidateNavigationUrl(
-                  area,
-                  search.destination.longitude,
-                  search.destination.latitude,
-                )}
-                target="_blank"
-                rel="noopener noreferrer"
-              >
-                {t("signal.navigateToArea")} <ArrowUpRight />
-              </a>
-              <a
-                className={styles.areaLink}
-                href={candidateWalkingUrl(
-                  area,
-                  search.destination.longitude,
-                  search.destination.latitude,
-                )}
-                target="_blank"
-                rel="noopener noreferrer"
-              >
-                {t("signal.walkToAddress")} <ArrowUpRight />
-              </a>
+              <small className={resultStyles.resultAreaWalk}>
+                {walkLabel(t, area, route, walking === null)}
+              </small>
+              <div className={resultStyles.resultAreaActions}>
+                <a
+                  className={resultStyles.resultAreaPrimary}
+                  href={candidateNavigationUrl(
+                    area,
+                    search.destination.longitude,
+                    search.destination.latitude,
+                  )}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                >
+                  {t("signal.navigateToArea")} <ArrowUpRight />
+                </a>
+                <a
+                  className={resultStyles.resultAreaSecondary}
+                  href={candidateWalkingUrl(
+                    area,
+                    search.destination.longitude,
+                    search.destination.latitude,
+                  )}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                >
+                  {t("signal.walkToAddress")} <ArrowUpRight />
+                </a>
+              </div>
             </div>
           );
         })}
         {!areas.length && (
-          <div>
+          <div className={resultStyles.checkRow}>
             <b>01</b>
             <strong>{t("signal.firstArea")}</strong>
             <small>
@@ -211,12 +230,12 @@ export function SignalResultStrip({
             </small>
           </div>
         )}
-        <div>
+        <div className={resultStyles.checkRow}>
           <b>{areas.length === 2 ? "03" : "02"}</b>
           <strong>{t("signal.checkZone")}</strong>
           <small>{zoneLabel}</small>
         </div>
-        <div>
+        <div className={resultStyles.checkRow}>
           <b>{areas.length === 2 ? "04" : "03"}</b>
           <strong>{t("signal.checkEvent")}</strong>
           <small>
@@ -225,8 +244,10 @@ export function SignalResultStrip({
               : t("signal.noEvent")}
           </small>
         </div>
-        <small>{t("signal.rankingNote")}</small>
-        <a className={styles.detailsJump} href="#explore-title">
+        <small className={resultStyles.checklistNote}>
+          {t("signal.rankingNote")}
+        </small>
+        <a className={resultStyles.detailsJump} href="#explore-title">
           {t("signal.detailsLink")} <ArrowDown />
         </a>
       </div>

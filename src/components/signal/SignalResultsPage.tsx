@@ -12,10 +12,9 @@ import type { ParkingContext } from "@/lib/parking-context";
 import { parseResultsParams } from "@/lib/results-url";
 import { ArrowLeft } from "@/components/icons";
 import { SignalDetails } from "./SignalDetails";
-import { SignalFooter } from "./SignalFooter";
-import { SignalHeader } from "./SignalHeader";
 import { SignalResultStrip } from "./SignalResultStrip";
 import { SignalResultsSearch } from "./SignalResultsSearch";
+import { SignalShell } from "./SignalShell";
 import styles from "./signal.module.css";
 
 type ParkingResult = ParkingSummary & ParkingContext;
@@ -117,8 +116,7 @@ export function SignalResultsPage() {
 
   if (!parsed.ok) {
     return (
-      <div className={styles.page}>
-        <SignalHeader />
+      <SignalShell>
         <main>
           <div className={styles.resultsTop}>
             <Link className={styles.backLink} href="/">
@@ -132,8 +130,7 @@ export function SignalResultsPage() {
             </p>
           </section>
         </main>
-        <SignalFooter />
-      </div>
+      </SignalShell>
     );
   }
 
@@ -157,8 +154,7 @@ export function SignalResultsPage() {
       : null;
 
   return (
-    <div className={styles.page}>
-      <SignalHeader />
+    <SignalShell>
       <main>
         <div className={styles.resultsTop}>
           <Link className={styles.backLink} href="/">
@@ -189,7 +185,6 @@ export function SignalResultsPage() {
           />
         )}
       </main>
-      <SignalFooter />
-    </div>
+    </SignalShell>
   );
 }

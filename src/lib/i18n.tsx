@@ -9,15 +9,10 @@ import {
   useState,
   type ReactNode,
 } from "react";
-import de from "./dictionaries/de.json";
-import en from "./dictionaries/en.json";
+import { translate, type I18nKey, type Locale } from "./dictionaries";
 
-export type Locale = "en" | "de";
-export const locales: Locale[] = ["en", "de"];
-
-export type I18nKey = keyof typeof en;
-
-const dictionaries: Record<Locale, Record<I18nKey, string>> = { en, de };
+export { locales } from "./dictionaries";
+export type { I18nKey, Locale } from "./dictionaries";
 
 const STORAGE_KEY = "berlin-parken-locale";
 
@@ -49,7 +44,7 @@ type I18n = {
 const I18nContext = createContext<I18n>({
   locale: "en",
   setLocale: () => {},
-  t: (key, vars) => format(en[key] ?? key, vars),
+  t: (key, vars) => format(translate("en", key), vars),
 });
 
 export function LocaleProvider({ children }: { children: ReactNode }) {
@@ -78,7 +73,7 @@ export function LocaleProvider({ children }: { children: ReactNode }) {
     () => ({
       locale,
       setLocale,
-      t: (key, vars) => format(dictionaries[locale][key] ?? key, vars),
+      t: (key, vars) => format(translate(locale, key), vars),
     }),
     [locale, setLocale],
   );
