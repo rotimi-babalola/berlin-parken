@@ -30,7 +30,7 @@
 }
 .headerTag {
   font-size: 10px;
-  font-weight: 800;
+  font-weight: bold;
   letter-spacing: 0.16em;
 }
 .headerRight {
@@ -108,7 +108,7 @@
   border: 1px solid #a7c4aa;
   color: #245f39;
   font-size: 12px;
-  font-weight: 800;
+  font-weight: bold;
 }
 
 /* Search panel */
@@ -128,7 +128,7 @@
   gap: 12px;
   padding: 17px 22px;
   font-size: 10px;
-  font-weight: 800;
+  font-weight: bold;
   letter-spacing: 0.13em;
   border-bottom: 1px solid #c7d7c8;
   color: #3e664c;
@@ -143,7 +143,7 @@
   display: block;
   margin-bottom: 12px;
   font-size: 12px;
-  font-weight: 800;
+  font-weight: bold;
   letter-spacing: 0.1em;
   text-transform: uppercase;
 }
@@ -174,7 +174,7 @@
   padding: 0 18px;
   white-space: nowrap;
   cursor: pointer;
-  font-weight: 800;
+  font-weight: bold;
   font-size: 14px;
   background: #153f2c;
   color: #fff;
@@ -259,7 +259,7 @@
 .recentsHeader {
   padding: 8px 12px 4px;
   font-size: 10px;
-  font-weight: 800;
+  font-weight: bold;
   letter-spacing: 0.13em;
   color: #3e664c;
   cursor: default;
@@ -285,7 +285,7 @@
   font-weight: 700;
 }
 .radiusLine output {
-  font-weight: 800;
+  font-weight: bold;
 }
 .radiusInput {
   width: 100%;
@@ -307,7 +307,7 @@
 }
 .timeField label {
   font-size: 12px;
-  font-weight: 800;
+  font-weight: bold;
   letter-spacing: 0.1em;
   text-transform: uppercase;
 }
@@ -408,7 +408,7 @@
 .metric > span,
 .checklistTitle {
   font-size: 10px;
-  font-weight: 800;
+  font-weight: bold;
   letter-spacing: 0.14em;
   color: #37684a;
 }
@@ -491,7 +491,7 @@
   padding-top: 2px;
   color: #b84727;
   font-size: 11px;
-  font-weight: 800;
+  font-weight: bold;
   letter-spacing: 0.1em;
   line-height: 1.4;
   font-variant-numeric: tabular-nums;
@@ -569,7 +569,7 @@
   gap: 6px;
   min-height: 40px;
   font-size: 12px;
-  font-weight: 800;
+  font-weight: bold;
   text-decoration-thickness: 1px;
   text-underline-offset: 3px;
 }
@@ -615,7 +615,7 @@
   margin-top: 18px;
   color: var(--detail-accent);
   font-size: 13px;
-  font-weight: 800;
+  font-weight: bold;
   text-decoration-thickness: 1px;
   text-underline-offset: 4px;
 }
@@ -740,7 +740,7 @@
   background: #a13120;
   color: #fff;
   font-size: 13px;
-  font-weight: 800;
+  font-weight: bold;
   box-shadow: 0 2px 8px #203e2944;
 }
 .backupPin {
@@ -793,7 +793,7 @@
 }
 .eyebrow {
   font-size: 11px;
-  font-weight: 800;
+  font-weight: bold;
   letter-spacing: 0.16em;
   color: var(--detail-accent);
 }
@@ -847,7 +847,7 @@
 .detailGrid summary small {
   color: var(--detail-accent);
   font-size: 10px;
-  font-weight: 800;
+  font-weight: bold;
   letter-spacing: 0.13em;
 }
 .detailGrid summary strong {
@@ -919,7 +919,7 @@
 .backLink {
   color: var(--detail-accent);
   font-size: 13px;
-  font-weight: 800;
+  font-weight: bold;
   text-decoration-thickness: 1px;
   text-underline-offset: 4px;
   white-space: nowrap;
@@ -936,7 +936,7 @@
   padding: 20px var(--signal-gutter) 0;
   color: #286b43;
   font-size: 12px;
-  font-weight: 800;
+  font-weight: bold;
   letter-spacing: 0.1em;
   text-transform: uppercase;
 }
@@ -1040,7 +1040,7 @@
   padding-top: 10px;
   color: var(--detail-accent);
   font-size: 12px;
-  font-weight: 800;
+  font-weight: bold;
   letter-spacing: 0.08em;
   text-transform: uppercase;
 }
@@ -1051,7 +1051,7 @@
 }
 .areaEyebrow {
   font-size: 11px;
-  font-weight: 800;
+  font-weight: bold;
   letter-spacing: 0.16em;
   color: var(--detail-accent);
 }
