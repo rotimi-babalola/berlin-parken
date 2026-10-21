@@ -288,6 +288,22 @@ describe("SignalPage", () => {
     ).toBe("page");
   });
 
+  it("remembers an explicit language choice", () => {
+    render(
+      <LocaleProvider locale="en">
+        <SignalPage />
+      </LocaleProvider>,
+    );
+
+    const link = screen.getByRole("link", { name: /^DE$/ });
+    link.addEventListener("click", (event) => event.preventDefault(), {
+      once: true,
+    });
+    fireEvent.click(link);
+
+    expect(window.localStorage.getItem("berlin-parken-locale")).toBe("de");
+  });
+
   it("blocks navigation when the arrival time is in the past", async () => {
     let parkingRequests = 0;
     vi.stubGlobal(

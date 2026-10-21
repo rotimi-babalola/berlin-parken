@@ -18,7 +18,7 @@ function validQuery() {
 
 test("the results URL round-trips the search query", () => {
   const query = validQuery();
-  const url = buildResultsUrl(query);
+  const url = buildResultsUrl(query, "en");
   assert.match(url, /^\/results\?/);
   const parsed = parseResultsParams(
     new URL(url, "http://localhost").searchParams,
@@ -45,7 +45,7 @@ test("German results URLs keep the query on the /de route", () => {
 test("rejects missing, out-of-Berlin, and out-of-range params", () => {
   const query = validQuery();
   const params = (overrides: Record<string, string>) => {
-    const url = new URL(buildResultsUrl(query), "http://localhost");
+    const url = new URL(buildResultsUrl(query, "en"), "http://localhost");
     for (const [key, value] of Object.entries(overrides))
       url.searchParams.set(key, value);
     return url.searchParams;

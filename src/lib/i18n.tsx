@@ -1,12 +1,6 @@
 "use client";
 
-import {
-  createContext,
-  useContext,
-  useEffect,
-  useMemo,
-  type ReactNode,
-} from "react";
+import { createContext, useContext, useMemo, type ReactNode } from "react";
 import { translate, type I18nKey, type Locale } from "./dictionaries";
 
 export { locales } from "./dictionaries";
@@ -53,7 +47,8 @@ const I18nContext = createContext<I18n>({
 });
 
 // The route decides the language, so server HTML and metadata already match
-// the URL. The stored value only helps return visitors keep their preference.
+// the URL. Only an explicit switcher click writes the stored preference, so
+// the redirect can read it without racing this provider.
 export function LocaleProvider({
   children,
   locale = "en",
@@ -61,10 +56,6 @@ export function LocaleProvider({
   children: ReactNode;
   locale?: Locale;
 }) {
-  useEffect(() => {
-    rememberLocale(locale);
-  }, [locale]);
-
   const value = useMemo<I18n>(
     () => ({
       locale,

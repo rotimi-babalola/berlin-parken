@@ -29,10 +29,7 @@ export function isInBerlin(latitude: number, longitude: number): boolean {
   );
 }
 
-export function buildResultsUrl(
-  query: ResultsQuery,
-  locale: Locale = "en",
-): string {
+export function buildResultsUrl(query: ResultsQuery, locale: Locale): string {
   const params = new URLSearchParams({
     label: query.label,
     lat: String(query.latitude),

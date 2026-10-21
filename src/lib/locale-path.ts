@@ -10,11 +10,11 @@ export function localizedPath(locale: Locale, path = "/"): string {
 
 // Map the current pathname to its other-language equivalent.
 export function equivalentPath(pathname: string, locale: Locale): string {
-  const path =
-    pathname === "/de"
-      ? "/"
-      : pathname.startsWith("/de/")
-        ? pathname.slice(3)
-        : pathname;
-  return localizedPath(locale, path || "/");
+  return localizedPath(locale, stripLocale(pathname) || "/");
+}
+
+function stripLocale(pathname: string): string {
+  return pathname === PREFIX.de || pathname.startsWith(`${PREFIX.de}/`)
+    ? pathname.slice(PREFIX.de.length)
+    : pathname;
 }

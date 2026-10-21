@@ -1,26 +1,23 @@
 import type { Metadata } from "next";
-import { Analytics } from "@vercel/analytics/next";
+import { LocaleDocument } from "@/components/locale-document";
 import { StoredLocaleRedirect } from "@/components/stored-locale-redirect";
-import { LocaleProvider } from "@/lib/i18n";
 import { siteUrl } from "@/lib/site-url";
 import "../globals.css";
 
 export const metadata: Metadata = {
   metadataBase: new URL(siteUrl),
+  title: "Berlin street parking, zones & fees | Berlin Parken",
+  description:
+    "Check mapped street parking near a Berlin address, managed parking zones, fees and restrictions. No live space availability.",
 };
 
 export default function EnglishRootLayout({
   children,
 }: Readonly<{ children: React.ReactNode }>) {
   return (
-    <html lang="en">
-      <body>
-        <LocaleProvider locale="en">
-          <StoredLocaleRedirect />
-          {children}
-        </LocaleProvider>
-        <Analytics />
-      </body>
-    </html>
+    <LocaleDocument locale="en">
+      <StoredLocaleRedirect />
+      {children}
+    </LocaleDocument>
   );
 }

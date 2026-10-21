@@ -19,12 +19,18 @@ test("redirects stored German visitors to the German URL without a loop", async 
   page,
 }) => {
   await page.goto("/");
-  await page.evaluate(() => localStorage.setItem("berlin-parken-locale", "de"));
+  await page.getByRole("link", { name: "DE", exact: true }).click();
+  await expect(page).toHaveURL(/\/de$/);
 
   await page.goto("/");
   await expect(page).toHaveURL(/\/de$/);
   await expect(page.locator("html")).toHaveAttribute("lang", "de");
 
+  // English-only routes must not be rewritten into a /de 404.
+  await page.goto("/design");
+  await expect(page).toHaveURL(/\/design$/);
+
+  await page.goto("/de");
   await page.getByRole("link", { name: "EN", exact: true }).click();
   await expect(page).toHaveURL(/\/$/);
   await expect(page.locator("html")).toHaveAttribute("lang", "en");

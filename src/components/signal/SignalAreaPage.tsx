@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { getAreaCopy, type AreaGuide } from "@/lib/areas";
-import { useLocale } from "@/lib/i18n";
+import { useLocale, type Locale } from "@/lib/i18n";
 import { localizedPath } from "@/lib/locale-path";
 import { buildResultsUrl } from "@/lib/results-url";
 import {
@@ -22,7 +22,7 @@ function AreaSearchButton({
   area: AreaGuide;
   label: string;
   destinationLabel: string;
-  locale: "en" | "de";
+  locale: Locale;
 }) {
   const router = useRouter();
 
