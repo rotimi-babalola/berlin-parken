@@ -2,12 +2,10 @@
 
 import { useAddressSearch } from "@/hooks/use-address-search";
 import { AreaLinks } from "./AreaLinks";
-import { SignalFooter } from "./SignalFooter";
-import { SignalHeader } from "./SignalHeader";
 import { SignalHero } from "./SignalHero";
 import { SignalSearchForm } from "./SignalSearchForm";
 import { SignalSearchPanel } from "./SignalSearchPanel";
-import styles from "./signal.module.css";
+import { SignalShell } from "./SignalShell";
 
 // Search-only landing: the form navigates to /results (shareable URL).
 // Result fetching and rendering live on the results page.
@@ -15,8 +13,7 @@ export function SignalPage() {
   const search = useAddressSearch();
 
   return (
-    <div className={styles.page}>
-      <SignalHeader />
+    <SignalShell>
       <main>
         <SignalHero>
           <SignalSearchPanel>
@@ -54,7 +51,6 @@ export function SignalPage() {
         </SignalHero>
         <AreaLinks />
       </main>
-      <SignalFooter />
-    </div>
+    </SignalShell>
   );
 }

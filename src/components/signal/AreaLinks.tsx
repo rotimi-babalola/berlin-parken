@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { AREAS, getAreaCopy } from "@/lib/areas";
 import { useLocale } from "@/lib/i18n";
-import styles from "./signal.module.css";
+import styles from "./area.module.css";
 
 export function AreaLinks() {
   const { locale, t } = useLocale();
@@ -12,7 +12,7 @@ export function AreaLinks() {
     <section className={styles.areaLinks} aria-labelledby="area-links-title">
       <div className={styles.areaLinksHead}>
         <div>
-          <span className={styles.eyebrow}>{t("areas.eyebrow")}</span>
+          <span className={styles.areaEyebrow}>{t("areas.eyebrow")}</span>
           <h2 id="area-links-title">{t("areas.title")}</h2>
         </div>
         <p>{t("areas.lede")}</p>

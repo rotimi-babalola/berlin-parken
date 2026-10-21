@@ -1,7 +1,6 @@
-import en from "./dictionaries/en.json" with { type: "json" };
-import de from "./dictionaries/de.json" with { type: "json" };
+import { translate, type I18nKey, type Locale } from "./dictionaries.ts";
 
-export type AreaLocale = "en" | "de";
+type AreaSlug = "mitte" | "kreuzberg" | "charlottenburg";
 
 export type AreaRule = {
   term: string;
@@ -31,18 +30,16 @@ export type AreaCopy = {
 };
 
 export type AreaSource = {
-  labelKey: keyof typeof en;
+  labelKey: I18nKey;
   href: string;
 };
 
 export type AreaGuide = {
-  slug: string;
+  slug: AreaSlug;
   center: { latitude: number; longitude: number };
   radiusMeters: number;
   sources: AreaSource[];
 };
-
-const dictionaries: Record<AreaLocale, Record<string, string>> = { en, de };
 
 const berlinSources: AreaSource[] = [
   {
@@ -94,9 +91,8 @@ export function getArea(slug: string): AreaGuide | undefined {
 
 // Long-form area copy lives in the translation files. This assembles one
 // locale's guide so page components never build translation keys themselves.
-export function getAreaCopy(area: AreaGuide, locale: AreaLocale): AreaCopy {
-  const dictionary = dictionaries[locale];
-  const read = (key: string) => dictionary[key] ?? "";
+export function getAreaCopy(area: AreaGuide, locale: Locale): AreaCopy {
+  const read = (key: I18nKey) => translate(locale, key);
 
   return {
     name: read(`areas.${area.slug}.name`),

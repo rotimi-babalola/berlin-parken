@@ -16,9 +16,18 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const area = getArea(slug);
   if (!area) return {};
   const content = getAreaCopy(area, "en");
+  const url = `/parking/${area.slug}`;
   return {
     title: content.metaTitle,
     description: content.metaDescription,
+    alternates: { canonical: url },
+    openGraph: {
+      type: "website",
+      siteName: "Berlin Parken",
+      title: content.metaTitle,
+      description: content.metaDescription,
+      url,
+    },
   };
 }
 

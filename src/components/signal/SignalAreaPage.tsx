@@ -9,9 +9,8 @@ import {
   DEFAULT_DURATION_MINUTES,
   defaultArrivalValue,
 } from "@/lib/search-time";
-import { SignalFooter } from "./SignalFooter";
-import { SignalHeader } from "./SignalHeader";
-import styles from "./signal.module.css";
+import { SignalShell } from "./SignalShell";
+import styles from "./area.module.css";
 
 function AreaSearchButton({
   area,
@@ -51,8 +50,7 @@ export function SignalAreaPage({ area }: { area: AreaGuide }) {
   const content = getAreaCopy(area, locale);
 
   return (
-    <div className={styles.page}>
-      <SignalHeader />
+    <SignalShell>
       <main className={styles.areaMain}>
         <article>
           <span className={styles.areaEyebrow}>{content.eyebrow}</span>
@@ -107,7 +105,6 @@ export function SignalAreaPage({ area }: { area: AreaGuide }) {
           </section>
         </article>
       </main>
-      <SignalFooter />
-    </div>
+    </SignalShell>
   );
 }

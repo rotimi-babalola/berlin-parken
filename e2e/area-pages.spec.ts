@@ -20,6 +20,12 @@ test("homepage lists the Kreuzberg and Charlottenburg guides", async ({
   await expect(
     page.getByRole("button", { name: "Check parking in Kreuzberg" }),
   ).toBeVisible();
+  await expect(page).toHaveTitle(/Parking in Berlin Kreuzberg/);
+});
+
+test("unknown area slug returns a 404", async ({ page }) => {
+  const response = await page.goto("/parking/not-a-real-area");
+  expect(response?.status()).toBe(404);
 });
 
 test("homepage links to the Mitte guide and the guide starts a search", async ({
@@ -56,6 +62,10 @@ test("homepage links to the Mitte guide and the guide starts a search", async ({
       name: "Parkraumbewirtschaftung (Parkzonen) – Berlin Open Data",
     }),
   ).toHaveAttribute("href", /daten\.berlin\.de/);
+  await expect(page.locator('link[rel="canonical"]')).toHaveAttribute(
+    "href",
+    /\/parking\/mitte$/,
+  );
 
   await page.setViewportSize({ width: 320, height: 800 });
   expect(
