@@ -3,7 +3,8 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { getAreaCopy, type AreaGuide } from "@/lib/areas";
-import { useLocale } from "@/lib/i18n";
+import { useLocale, type Locale } from "@/lib/i18n";
+import { localizedPath } from "@/lib/locale-path";
 import { buildResultsUrl } from "@/lib/results-url";
 import {
   DEFAULT_DURATION_MINUTES,
@@ -16,10 +17,12 @@ function AreaSearchButton({
   area,
   label,
   destinationLabel,
+  locale,
 }: {
   area: AreaGuide;
   label: string;
   destinationLabel: string;
+  locale: Locale;
 }) {
   const router = useRouter();
 
@@ -29,14 +32,17 @@ function AreaSearchButton({
       className={styles.areaSearchButton}
       onClick={() =>
         router.push(
-          buildResultsUrl({
-            label: destinationLabel,
-            latitude: area.center.latitude,
-            longitude: area.center.longitude,
-            radius: area.radiusMeters,
-            arrival: defaultArrivalValue(),
-            duration: DEFAULT_DURATION_MINUTES,
-          }),
+          buildResultsUrl(
+            {
+              label: destinationLabel,
+              latitude: area.center.latitude,
+              longitude: area.center.longitude,
+              radius: area.radiusMeters,
+              arrival: defaultArrivalValue(),
+              duration: DEFAULT_DURATION_MINUTES,
+            },
+            locale,
+          ),
         )
       }
     >
@@ -62,8 +68,9 @@ export function SignalAreaPage({ area }: { area: AreaGuide }) {
               area={area}
               label={content.searchCta}
               destinationLabel={`${content.name}, Berlin`}
+              locale={locale}
             />
-            <Link href="/">{content.otherSearch}</Link>
+            <Link href={localizedPath(locale)}>{content.otherSearch}</Link>
           </div>
 
           <p className={styles.areaCaveat}>{content.caveat}</p>

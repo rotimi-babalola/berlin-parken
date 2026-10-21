@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { AREAS, getAreaCopy } from "@/lib/areas";
 import { useLocale } from "@/lib/i18n";
+import { localizedPath } from "@/lib/locale-path";
 import styles from "./area.module.css";
 
 export function AreaLinks() {
@@ -22,7 +23,10 @@ export function AreaLinks() {
           const content = getAreaCopy(area, locale);
           return (
             <li key={area.slug}>
-              <Link className={styles.areaCard} href={`/parking/${area.slug}`}>
+              <Link
+                className={styles.areaCard}
+                href={localizedPath(locale, `/parking/${area.slug}`)}
+              >
                 <strong>{content.name}</strong>
                 <span>{content.short}</span>
                 <small>{t("areas.open")}</small>

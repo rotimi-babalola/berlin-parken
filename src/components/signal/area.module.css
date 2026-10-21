@@ -168,8 +168,8 @@
 .areaSources a {
   color: var(--detail-accent);
 }
-.areaSourceNote {
-  margin: 14px 0 0;
+.areaSection .areaSourceNote {
+  margin: 16px 0 0;
   color: #526658;
   font-size: 12px;
   line-height: 1.5;

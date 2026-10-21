@@ -44,7 +44,7 @@ function useRecentSearches(query: string, suggestionsDismissed: boolean) {
 }
 
 export function useAddressSearch(initial?: ResultsQuery) {
-  const { t } = useLocale();
+  const { locale, t } = useLocale();
   const router = useRouter();
   const [query, setQuery] = useState(initial?.label ?? "");
   const [selected, setSelected] = useState<AddressSuggestion | null>(
@@ -164,14 +164,17 @@ export function useAddressSearch(initial?: ResultsQuery) {
     recordRecentSearch(selected);
     recents.close();
     router.push(
-      buildResultsUrl({
-        label: selected.label,
-        latitude: selected.latitude,
-        longitude: selected.longitude,
-        radius,
-        arrival,
-        duration: parsedDuration.minutes,
-      }),
+      buildResultsUrl(
+        {
+          label: selected.label,
+          latitude: selected.latitude,
+          longitude: selected.longitude,
+          radius,
+          arrival,
+          duration: parsedDuration.minutes,
+        },
+        locale,
+      ),
     );
   }
 

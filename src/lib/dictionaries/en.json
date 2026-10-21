@@ -1,4 +1,10 @@
 {
+  "seo": {
+    "homeTitle": "Berlin street parking, zones & fees | Berlin Parken",
+    "homeDescription": "Check mapped street parking near a Berlin address, managed parking zones, fees and restrictions. No live space availability.",
+    "resultsTitle": "Berlin street parking results | Berlin Parken",
+    "resultsDescription": "Review mapped street parking, managed parking zones, fees and restrictions near your Berlin destination. No live space availability."
+  },
   "header": {
     "location": "BERLIN, GERMANY",
     "languageLabel": "Language"

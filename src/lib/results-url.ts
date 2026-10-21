@@ -1,3 +1,5 @@
+import type { Locale } from "./dictionaries.ts";
+import { localizedPath } from "./locale-path.ts";
 import { parseArrival, parseDuration } from "./search-time.ts";
 
 export type ResultsQuery = {
@@ -27,7 +29,7 @@ export function isInBerlin(latitude: number, longitude: number): boolean {
   );
 }
 
-export function buildResultsUrl(query: ResultsQuery): string {
+export function buildResultsUrl(query: ResultsQuery, locale: Locale): string {
   const params = new URLSearchParams({
     label: query.label,
     lat: String(query.latitude),
@@ -36,7 +38,7 @@ export function buildResultsUrl(query: ResultsQuery): string {
     arrival: query.arrival,
     duration: String(query.duration),
   });
-  return `/results?${params.toString()}`;
+  return `${localizedPath(locale, "/results")}?${params.toString()}`;
 }
 
 // Single validator for the shareable results URL, so refresh and shared
