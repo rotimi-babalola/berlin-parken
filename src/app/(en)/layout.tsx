@@ -6,6 +6,9 @@ import "../globals.css";
 
 export const metadata: Metadata = {
   metadataBase: new URL(siteUrl),
+  verification: {
+    google: "bFQ28Zk7T5BZ2mdl6OEinXEYBmSt_DXXKPRxFXu7RyA",
+  },
   title: "Berlin street parking, zones & fees | Berlin Parken",
   description:
     "Check mapped street parking near a Berlin address, managed parking zones, fees and restrictions. No live space availability.",
